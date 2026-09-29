@@ -40,8 +40,8 @@ export function createScene(container){
  const woven=canvasTexture(512,512,(c,w,h)=>{c.fillStyle='#b99564';c.fillRect(0,0,w,h);for(let y=0;y<h;y+=12)for(let x=0;x<w;x+=12){c.fillStyle=(x/12+y/12)%2?'#d6b889':'#aa8251';c.fillRect(x+1,y+1,10,10);c.fillStyle='#ead1a35b';c.fillRect(x+2,y+2,8,2);c.fillStyle='#6b4e3738';c.fillRect(x+1,y+9,10,1);}},[2,1]);
  const terrazzo=canvasTexture(512,512,(c,w,h)=>{c.fillStyle='#e0dcd0';c.fillRect(0,0,w,h);for(let i=0;i<1400;i++){const x=rand()*w,y=rand()*h,r=rand()*3.8+.3;c.fillStyle=['#b5b5a1','#b99378','#f3efe4','#a4a69b','#cbc5b4'][i%5];c.beginPath();c.moveTo(x-r,y-r);c.lineTo(x+r,y-r*.7);c.lineTo(x+r*.6,y+r);c.lineTo(x-r*.8,y+r*.5);c.fill();}},[2,2]);
  const rugMap=canvasTexture(1024,1024,(c,w,h)=>{c.fillStyle='#d8c4a6';c.fillRect(0,0,w,h);c.fillStyle='#426e71';c.fillRect(46,46,w-92,h-92);c.fillStyle='#e4d8be';c.fillRect(68,68,w-136,h-136);for(let y=125;y<930;y+=130)for(let x=120;x<930;x+=130){c.save();c.translate(x,y);c.rotate(Math.PI/4);c.strokeStyle='#b8765590';c.lineWidth=13;c.strokeRect(-29,-29,58,58);c.fillStyle='#577b7540';c.fillRect(-8,-8,16,16);c.restore();}for(let i=0;i<45000;i++){c.fillStyle=rand()>.5?'#fff2':'#503c2115';c.fillRect(rand()*w,rand()*h,rand()*2+.5,rand()*4+1);}},[1,1]);
- const mat=(color,opts={})=>new THREE.MeshStandardMaterial({color,roughness:.7,roughnessMap:microNoise,...opts});
- const m={oak:mat('#ffffff',{map:timber,roughness:.5,bumpMap:timber,bumpScale:.009}),floor:mat('#e7d3b3',{map:oak,roughness:.53,bumpMap:oak,bumpScale:.028}),wall:mat('#f8f4e8',{map:plaster,bumpMap:plaster,bumpScale:.01,roughness:.92}),white:mat('#f5f1e8',{roughness:.4}),cream:mat('#efe4ce',{map:linen,bumpMap:linen,bumpScale:.008}),terracotta:mat('#c1805e',{map:linen,bumpMap:linen,bumpScale:.008}),teal:mat('#457b79',{roughness:.4}),orange:mat('#f5a947',{roughness:.4}),rattan:mat('#ffffff',{map:woven,bumpMap:woven,bumpScale:.018}),stone:mat('#f6f2e7',{map:terrazzo,bumpMap:terrazzo,bumpScale:.003,roughness:.38}),brass:mat('#b1a07a',{metalness:.78,roughness:.3}),metal:mat('#c2c7bd',{metalness:.83,roughness:.25}),black:mat('#353b37',{roughness:.68}),rubber:mat('#28312e',{roughness:.9}),soil:mat('#3c3326',{roughness:1}),leaf:mat('#426b38',{roughness:.65,side:THREE.DoubleSide}),leafLight:mat('#73954a',{roughness:.68,side:THREE.DoubleSide}),leafDark:mat('#2e5631',{roughness:.75,side:THREE.DoubleSide}),paper:mat('#e8dfcc'),navy:mat('#415564'),pink:mat('#c09182'),blue:mat('#7fa3ae'),water:mat('#31bce4',{roughness:.1,metalness:.1,transparent:true,opacity:.77}),glass:mat('#d7f1ea',{transparent:true,opacity:.18,roughness:.12,metalness:.2,depthWrite:false}),rug:mat('#fff8e9',{map:rugMap,roughness:1,bumpMap:rugMap,bumpScale:.01})};
+ const mat=(color,opts={})=>new THREE.MeshStandardMaterial({color,roughness:.7,...opts});
+ const m={oak:mat('#ffffff',{map:timber,roughness:.5,bumpMap:timber,bumpScale:.009,roughnessMap:microNoise}),floor:mat('#e7d3b3',{map:oak,roughness:.53,bumpMap:oak,bumpScale:.028,roughnessMap:microNoise}),wall:mat('#f8f4e8',{map:plaster,bumpMap:plaster,bumpScale:.01,roughness:.92}),white:mat('#f5f1e8',{roughness:.4}),cream:mat('#efe4ce',{map:linen,bumpMap:linen,bumpScale:.008}),terracotta:mat('#c1805e',{map:linen,bumpMap:linen,bumpScale:.008}),teal:mat('#457b79',{roughness:.4}),orange:mat('#f5a947',{roughness:.4}),rattan:mat('#ffffff',{map:woven,bumpMap:woven,bumpScale:.018}),stone:mat('#f6f2e7',{map:terrazzo,bumpMap:terrazzo,bumpScale:.003,roughness:.38}),brass:mat('#b1a07a',{metalness:.78,roughness:.3}),metal:mat('#c2c7bd',{metalness:.83,roughness:.25}),black:mat('#353b37',{roughness:.68}),rubber:mat('#28312e',{roughness:.9}),soil:mat('#3c3326',{roughness:1}),leaf:mat('#426b38',{roughness:.65,side:THREE.DoubleSide}),leafLight:mat('#73954a',{roughness:.68,side:THREE.DoubleSide}),leafDark:mat('#2e5631',{roughness:.75,side:THREE.DoubleSide}),paper:mat('#e8dfcc'),navy:mat('#415564'),pink:mat('#c09182'),blue:mat('#7fa3ae'),water:mat('#31bce4',{roughness:.1,metalness:.1,transparent:true,opacity:.77}),glass:mat('#d7f1ea',{transparent:true,opacity:.18,roughness:.12,metalness:.2,depthWrite:false}),rug:mat('#fff8e9',{map:rugMap,roughness:1,bumpMap:rugMap,bumpScale:.01})};
 
  const screenMap=canvasTexture(256,256,(ctx,w,h)=>{ctx.fillStyle='#172e4d';ctx.fillRect(0,0,w,h);for(let i=0;i<70;i++){ctx.fillStyle=['#e6b960','#77a5b1','#e99b85'][i%3];ctx.fillRect(rand()*w,rand()*h,2,2);}for(let i=0;i<5;i++){ctx.strokeStyle=['#d99677','#8bb5a9'][i%2];ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(128,128,30+i*18,20+i*10,-.35,0,Math.PI*2);ctx.stroke();}});
  m.asphalt=mat('#56616a',{roughness:.98});m.portConcrete=mat('#a2a9a4',{roughness:.92});
@@ -159,23 +159,23 @@ export function createScene(container){
 
  // Low-cost motivated bounce fills illuminate the room interiors behind closed wall partitions.
  const fillLights=[];
- for(const [x,z,color,power] of [[-8,4,'#f4ead9',13],[-8,14,'#f4ead9',9],[-9,-10,'#e8edef',11],[8,-9,'#ffefd9',10],[8,10,'#ebf1e6',9]]){const fill=new THREE.PointLight(color,power,17,1.8);fill.position.set(x,2.95,z);scene.add(fill);fillLights.push(fill);}
+ for(const [x,z,color,power] of [[-8,6,'#f4ead9',11],[8,-6,'#ffefd9',10]]){const fill=new THREE.PointLight(color,power,22,1.9);fill.position.set(x,2.95,z);scene.add(fill);fillLights.push(fill);}
  // Kademeyi uygula: gölge çözünürlüğü ve tazeleme sıklığı, piksel oranı, dolgu ışığı sayısı.
  let renderScale=1,shadowEvery=1,occluderEvery=1;
  function applyQuality(next,remember){
   if(LEVELS.includes(next))quality=next;
   if(remember){try{localStorage.setItem(QUALITY_KEY,quality);}catch{}}
-  const cap=quality==='high'?1.75:quality==='medium'?1.25:1,shrink=quality==='low'?.8:1;
+  const cap=quality==='high'?1.35:quality==='medium'?1.15:1,shrink=quality==='low'?.8:1;
   renderer.setPixelRatio(Math.max(.5,Math.min(window.devicePixelRatio||1,cap)*shrink*renderScale));
   renderer.shadowMap.enabled=quality!=='low'&&shadowsOn;
   renderer.shadowMap.type=quality==='high'?THREE.PCFSoftShadowMap:THREE.PCFShadowMap;
   renderer.toneMapping=quality==='low'?THREE.LinearToneMapping:THREE.ACESFilmicToneMapping;
-  const size=quality==='high'?3072:1536;
+  const size=quality==='high'?2048:1024;
   if(sun.shadow.mapSize.x!==size){sun.shadow.map?.dispose();sun.shadow.map=null;sun.shadow.mapSize.set(size,size);}
-  sun.castShadow=quality!=='low'&&shadowsOn;sun.shadow.radius=quality==='high'?3:1;
-  shadowEvery=quality==='high'?1:3;occluderEvery=quality==='high'?1:quality==='medium'?2:3;
+  sun.castShadow=quality!=='low'&&shadowsOn;sun.shadow.radius=quality==='high'?2:1;
+  shadowEvery=1;occluderEvery=1;
   // Düşük kademede ışık başına düşen kare maliyeti belirleyici: uzak odaların dolgusu kapanır.
-  fillLights.forEach((light,i)=>light.visible=quality==='low'?i<2:true);
+  fillLights.forEach((light,i)=>light.visible=quality==='low'?i<1:true);
   sunbeamGroup.visible=dustPoints.visible=quality!=='low';
   scene.environmentIntensity=quality==='low'?.32:.5;
   renderer.shadowMap.needsUpdate=true;
@@ -441,10 +441,14 @@ export function createScene(container){
    const height=object?(propTypes[object.userData.type]?.height||1):1.7;
    cameraTarget.copy(pos).add(new THREE.Vector3(0,Math.min(1.5,height*.65),0));
    const size=object?dimensions({type:object.userData.type}):null;
-   const distance=size?Math.max(3,Math.hypot(size.w,size.d)*.85,size.h*1.2):3;
-   const offset=new THREE.Vector3(0,0,distance).applyEuler(new THREE.Euler(pitch-.2,yaw,0,'YXZ'));
-   camera.position.copy(cameraTarget).add(offset);camera.position.y=Math.max(.3,Math.min(currentRoom.height-.2,camera.position.y));
-   camera.lookAt(cameraTarget);hideOccluders(camera.position,cameraTarget,object);
+   const targetDist=size?Math.max(2.4,Math.hypot(size.w,size.d)*.8,size.h*1.1):2.8;
+   const dir=new THREE.Vector3(0,0,1).applyEuler(new THREE.Euler(pitch-.2,yaw,0,'YXZ'));
+   cameraRay.set(cameraTarget,dir);cameraRay.far=targetDist+.3;
+   const hits=cameraRay.intersectObjects(collisionMeshes,false);
+   const actualDist=hits.length>0&&hits[0].distance>.25?Math.max(.55,hits[0].distance-.22):targetDist;
+   camera.position.copy(cameraTarget).addScaledVector(dir,actualDist);
+   camera.position.y=Math.max(.3,Math.min(currentRoom.height-.2,camera.position.y));
+   camera.lookAt(cameraTarget);
   }else{
    const next=moveSpectator(camera.position,yaw,spectator.keys||{},dt,currentRoom);camera.position.set(next.x,next.y,next.z);
    camera.rotation.set(pitch,yaw,0,'YXZ');
@@ -455,29 +459,33 @@ export function createScene(container){
   cameraTarget.copy(pos).add(new THREE.Vector3(0,Math.min(1.25,ph*.64+.17),0));
   const size=myObject?dimensions({type:myObject.userData.type}):null;
   const highUp=Math.max(0,cameraTarget.y-1.8);
-  const distance=(myObject?Math.max(2.5,Math.hypot(size.w,size.d)*.75,(size.h||0)*1.25):3.2)+highUp*1.6;
-  // Duvardaki tablo veya tavandaki lamba olduğunda istenen yönde kameraya yer yok: oraya
-  // zorlanınca duvarın içine girip arkasını gösteriyordu. Bu yüzden önce istenen yön denenir,
-  // olmazsa odaya bakan en açık yön taranır; hiçbir yön yetmiyorsa kamera nesnenin içine geçip
-  // oyuncunun baktığı yöne bakar. Tarama yalnızca sabit mimariye ışın atar, ucuzdur.
+  const desiredDist=(myObject?Math.max(2.2,Math.hypot(size.w,size.d)*.75,(size.h||0)*1.2):2.8)+highUp*1.2;
   if(myObject)myObject.visible=true;
-  const chosen=new THREE.Vector3(0,0,1).applyEuler(new THREE.Euler(Math.max(-.75,Math.min(.32,pitch))-.16,yaw,0,'YXZ'));
-  const desired=cameraTarget.clone().addScaledVector(chosen,distance);
-  // Yükseğe asılı kılıklarda (duvardaki tablo, tavandaki lamba) kamera daha geriden ve daha
-  // aşağıdan bakar, böylece ekranı tavan değil oda doldurur; alçak kılıklarda hafif yukarıdan.
-  const rise=highUp>0?-Math.min(1.35,highUp*.85+.25):.5;
-  desired.y+=rise;clampHiderCamera(desired,currentRoom);
-  if(!wasPlaying)camera.position.copy(desired);else camera.position.lerp(desired,1-Math.exp(-dt*24));
-  // Yükseğe asılı kılıkta tam nesneye bakmak kareyi tavanla doldurur; bakış noktası biraz aşağı
-  // alınınca hem kılık üstte görünür hem oda görünür kalır.
+  const chosen=new THREE.Vector3(0,0,1).applyEuler(new THREE.Euler(Math.max(-.75,Math.min(.4,pitch))-.14,yaw,0,'YXZ'));
+  const rise=highUp>0?-Math.min(1.2,highUp*.8+.2):.45;
+
+  // Spring-Arm: duvara tosladığında kamera yumuşakça içeri yaklaşır, duvarın arkasına geçmez
+  let actualDist=desiredDist;
+  cameraRay.set(cameraTarget,chosen);cameraRay.far=desiredDist+.3;
+  const hits=cameraRay.intersectObjects(collisionMeshes,false);
+  if(hits.length>0&&hits[0].distance>.25){
+   actualDist=Math.max(.55,hits[0].distance-.22);
+  }
+
+  const desired=cameraTarget.clone().addScaledVector(chosen,actualDist);
+  desired.y+=rise*(actualDist/desiredDist);
+  const padX=Math.min(1.2,currentRoom.width*.04),padZ=Math.min(1.2,currentRoom.depth*.04);
+  desired.x=Math.max(-currentRoom.width/2+padX,Math.min(currentRoom.width/2-padX,desired.x));
+  desired.z=Math.max(-currentRoom.depth/2+padZ,Math.min(currentRoom.depth/2-padZ,desired.z));
+  desired.y=Math.max(.35,Math.min(currentRoom.height-.25,desired.y));
+  clampHiderCamera(desired,currentRoom);
+
+  if(!wasPlaying)camera.position.copy(desired);else camera.position.lerp(desired,1-Math.exp(-dt*28));
   focus.copy(cameraTarget);if(highUp>0)focus.y-=Math.min(1.25,highUp*.85);
   camera.lookAt(focus);
-  if(refreshOccluders)hideOccluders(camera.position,cameraTarget,myObject);
   const body=people.get(myId);if(body)body.visible=!myObject&&own.status!=='found';gun.visible=false;}
  else{showAll();const desired=pos.clone().add(new THREE.Vector3(0,eyeHeight(own),0));
-  const isMoving=own.input&&Math.hypot(own.input.x||0,own.input.z||0)>.1&&own.grounded&&!own.crouch;
-  if(isMoving){desired.y+=Math.sin(t*.011)*.016;desired.x+=Math.cos(t*.0055)*.01;}
-  if(!wasPlaying)camera.position.copy(desired);else camera.position.lerp(desired,1-Math.exp(-dt*27));camera.rotation.set(Math.max(-1.35,Math.min(1.35,pitch)),yaw,0,'YXZ');gun.visible=!!entered&&own.status!=='found';
+  camera.position.copy(desired);camera.rotation.set(Math.max(-1.35,Math.min(1.35,pitch)),yaw,0,'YXZ');gun.visible=!!entered&&own.status!=='found';
   // Avcı kendi modelini hiç görmez, yalnızca bu kolu: kolluk seçtiği karakterin kumaşını alır,
   // yoksa oyuncu turda kendi seçiminin izini göremezdi.
   const sleeve=styleFor(own.skin).shirt||m.cream;if(arm.material!==sleeve)arm.material=sleeve;
@@ -494,7 +502,7 @@ export function createScene(container){
   if(isReloading){waterFill.scale.x=1+Math.sin(t*.04)*.04;waterFill.scale.z=waterFill.scale.x;}else{waterFill.scale.x=1;waterFill.scale.z=1;}}}
  else{showAll();gun.visible=false;camera.position.set(-11.9,1.9,8.8);camera.lookAt(-5.5,.75,3.8);}
  wasPlaying=!!playing;for(let i=shots.length-1;i>=0;i--){const shot=shots[i],age=(performance.now()-shot.start)/1000;shot.streak.visible=age<.15;shot.streak.material.opacity=Math.max(0,.65-age*4);if(shot.splashRing){const s=1+age*7.5;shot.splashRing.scale.set(s,s,1);shot.splashRing.material.opacity=Math.max(0,.85-age*2.6);}for(const p of shot.g.children){if(!p.userData.velocity)continue;p.position.addScaledVector(p.userData.velocity,dt);p.userData.velocity.y-=dt*4;p.scale.multiplyScalar(.97);}if(age>.5){scene.remove(shot.g);shot.streak.geometry.dispose();shot.streak.material.dispose();if(shot.splashRing)shot.splashRing.material.dispose();shots.splice(i,1);}}
- if(dustPoints.visible){const arr=dustGeo.attributes.position.array;for(let i=0;i<dustCount;i++){arr[i*3+1]+=Math.sin(t*.0012+i)*.0012;arr[i*3]+=Math.cos(t*.0009+i)*.0008;}dustGeo.attributes.position.needsUpdate=true;}
+ if(dustPoints.visible){dustPoints.rotation.y=t*.00005;dustPoints.position.y=Math.sin(t*.0006)*.06;}
  animateEffects(performance.now());renderer.render(scene,camera);
  // Kare süresini izle: oyuncu elle bir kademe seçmediyse yavaşlıkta kendini toparlar.
  if(active){frameSum+=dt;frameTicks++;

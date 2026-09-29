@@ -29,7 +29,7 @@ test('harbor ground covers the entire playable area',()=>{
  const g=buildMapArchitecture(context(),MAPS.harbor);
  const ground=g.children.find(o=>o.isMesh&&o.position.y<0);
  const size=new THREE.Box3().setFromObject(ground).getSize(new THREE.Vector3());
- assert.ok(size.x>=56&&size.x<57&&size.z>=72&&size.z<73);
+ assert.ok(size.x>=32&&size.x<33&&size.z>=40&&size.z<41);
 });
 
 test('resized harbor wall decoration stays on its physical wall instead of creating floating windows',()=>{

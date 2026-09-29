@@ -74,9 +74,9 @@ test('teams swap and so does the venue: the map rotates each round unless the ho
  for(let i=0;i<6;i++){r.phase='end';start(r,100000+i*1000);assert.equal(r.settings.mapId,pinned,'rotasyon kapalı');}
 });
 
-test('harbor is reduced to two thirds in each horizontal dimension with connected districts and solid outer boundaries',()=>{
+test('harbor is reduced to compact dimensions with connected districts and solid outer boundaries',()=>{
  const map=MAPS.harbor;assert.ok(map,'harbor is registered');
- assert.equal(map.room.width*map.room.depth,56*72);
+ assert.equal(map.room.width*map.room.depth,32*40);
  const objects=generateProps(0,1,'harbor');
  assert.ok(map.zones.length>=5);assert.ok(objects.length<400,'bounded prop budget');
  for(const zone of map.zones){
@@ -84,10 +84,10 @@ test('harbor is reduced to two thirds in each horizontal dimension with connecte
   const path=pathTo({x:0,z:0},target,objects);
   assert.ok(path.length>0,zone.name+' is reachable');
  }
- assert.equal(free(28,0,.28,objects),false);
- assert.equal(free(0,36,.28,objects),false);
- assert.ok(free(0,32,.28,objects));
- assert.equal(nearestHit({x:0,y:.6,z:34},{x:0,y:0,z:1},objects).kind,'wall');
+ assert.equal(free(16,0,.28,objects),false);
+ assert.equal(free(0,20,.28,objects),false);
+ assert.ok(free(0,16,.28,objects));
+ assert.equal(nearestHit({x:0,y:.6,z:18},{x:0,y:0,z:1},objects).kind,'wall');
 });
 
 test('harbor is an original cargo-port theme, not a collection of old map inventories',()=>{
@@ -101,7 +101,7 @@ test('harbor is an original cargo-port theme, not a collection of old map invent
 
 test('technology office has furnished, reachable departments and clear doorways',()=>{
  const map=MAPS.techOffice;assert.ok(map,'office registered');
- assert.deepEqual([map.room.width,map.room.depth],[44,48]);
+ assert.deepEqual([map.room.width,map.room.depth],[30,36]);
  const objects=generateProps(0,1,map.id);
  const expected={manager:'award',backend:'codeMonitor',mobile:'phoneRack',analyst:'kanbanBoard',database:'storageArray',devops:'networkSwitch',design:'drawingTablet',qa:'testRig'};
  for(const [id,type]of Object.entries(expected)){
@@ -114,7 +114,7 @@ test('technology office has furnished, reachable departments and clear doorways'
 });
 test('resized harbor keeps supported cargo separated at normal prop scale',()=>{
  const map=MAPS.harbor;
- assert.deepEqual([map.room.width,map.room.depth],[56,72]);
+ assert.deepEqual([map.room.width,map.room.depth],[32,40]);
  for(const pallet of map.fixtures.filter(o=>o.type==='pallet')){
   const cargo=map.fixtures.filter(o=>o.supportId===pallet.id);
   if(cargo.length===2)assert.ok(Math.abs(cargo[0].x-cargo[1].x)>=.62-1e-8);
@@ -123,7 +123,7 @@ test('resized harbor keeps supported cargo separated at normal prop scale',()=>{
 
 test('manager office connects only to the main corridor, with a solid mobile-office divider',()=>{
  const objects=generateProps(0,1,'techOffice');
- assert.ok(free(-2.5,-18,.3,objects),'corridor entrance stays open');
+ assert.ok(free(-2.5,-15,.3,objects),'corridor entrance stays open');
  assert.equal(free(-14,-12,.3,objects),false,'former side doorway is closed');
  assert.ok(!MAPS.techOffice.doors.some(([x,z])=>x===-14&&z===-12));
  assert.equal(nearestHit({x:-14,y:1.6,z:-13},{x:0,y:0,z:1},objects).kind,'wall');
@@ -154,9 +154,9 @@ test('size tiers are ordered, exhaustive and match the three real map footprints
  assert.deepEqual(byTier('standard'),['arcade','greenhouse','hotel','loft','market','museum']);
  assert.deepEqual(byTier('large'),['techOffice']);
  assert.deepEqual(byTier('huge'),['harbor']);
- assert.equal(MAP_CHOICES.find(m=>m.id==='harbor').area,4032);
- assert.equal(MAP_CHOICES.find(m=>m.id==='techOffice').area,2112);
- // Ölçekleme sonrası 55.999… taşıyan liman odası yuvarlanmadan eşiğe girmemeli.
- assert.deepEqual(mapSize({width:55.99999999999999,depth:71.99999999999999}),
-  {width:56,depth:72,area:4032,size:'huge',sizeName:'Devasa',sizeTeams:'6v6 – 12v12'});
+ assert.equal(MAP_CHOICES.find(m=>m.id==='harbor').area,1280);
+ assert.equal(MAP_CHOICES.find(m=>m.id==='techOffice').area,1080);
+ // Ölçekleme sonrası yuvarlama hem eşiği hem etiketi düzeltir.
+ assert.deepEqual(mapSize({width:31.99999999999999,depth:39.99999999999999}),
+  {width:32,depth:40,area:1280,size:'huge',sizeName:'Devasa',sizeTeams:'6v6 – 12v12'});
 });

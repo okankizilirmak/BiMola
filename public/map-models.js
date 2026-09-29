@@ -224,33 +224,30 @@ export function buildMapArchitecture(c,map){
   box(10,7,7,75,6.5,19,m.white,detailRoot);box(10.1,1,7.1,75,8.4,19,colors.window,detailRoot);
  }else if(id==='techOffice'){
   const floorColors=[m.officeWarm,m.officeBlue,m.officeMint,m.officeSand,m.officeSlate,m.officeBlue,m.officeRose,m.officeMint];
-  box(4.7,.014,47.6,0,.003,0,m.stone,root);
+  box(4.7,.014,map.room.depth-.4,0,.003,0,m.stone,root);
   map.zones.forEach((zone,index)=>{
    const x=(zone.xmin+zone.xmax)/2,z=(zone.zmin+zone.zmax)/2,side=Math.sign(x);
-   box(zone.xmax-zone.xmin+1.4,.012,11.6,x,.003,z,floorColors[index],root);
+   const zw=zone.zmax-zone.zmin,xw=zone.xmax-zone.xmin;
+   box(xw+1.4,.012,zw+1.4,x,.003,z,floorColors[index],root);
    // Door headers, ceiling tiles and light strips are removable camera occluders.
-   const ceiling=shellPiece();box(19.3,.12,11.8,side*12.25,4.72,z,m.white,ceiling);
-   for(const dz of [-3,3])for(const dx of [-4,4])box(3,.028,.35,x+dx,4.64,z+dz,colors.window,ceiling);
-   for(let dz=-4.5;dz<=4.5;dz+=3)box(19,.025,.035,x,4.64,z+dz,m.metal,ceiling);
+   const ceiling=shellPiece();box(xw,.12,zw,x,4.72,z,m.white,ceiling);
+   for(const dz of [-zw*.25,zw*.25])for(const dx of [-xw*.25,xw*.25])box(Math.min(3,xw*.4),.028,.35,x+dx,4.64,z+dz,colors.window,ceiling);
    bake(ceiling);
    const entry=shellPiece();
-   for(const dz of [-1.62,1.62])box(.3,3.2,.1,side*2.5,1.6,z+dz,m.teal,entry);
-   box(.3,.5,3.3,side*2.5,3.45,z,m.teal,entry);
+   for(const dz of [-1.4,1.4])box(.3,2.8,.1,side*2.5,1.4,z+dz,m.teal,entry);
+   box(.3,.5,2.9,side*2.5,3.05,z,m.teal,entry);
    const doorLabel=zone.id==='manager'?'HD':zone.name;
-   c.label?.(doorLabel,side*2.31,3.44,z,-side*Math.PI/2,2.85,.36,entry);
-   c.label?.(doorLabel,side*2.69,3.44,z,side*Math.PI/2,2.85,.36,entry);
+   c.label?.(doorLabel,side*2.31,3.04,z,-side*Math.PI/2,2.85,.36,entry);
+   c.label?.(doorLabel,side*2.69,3.04,z,side*Math.PI/2,2.85,.36,entry);
    bake(entry);
    // Exterior windows are inset into the solid envelope, keeping physics consistent.
    const windows=shellPiece();
-   for(const dz of [-3,3]){
-    box(.025,2.1,5,side*21.82,2.7,z+dz,colors.window,windows);
-    for(const offset of [-2.55,0,2.55])box(.07,2.2,.07,side*21.76,2.7,z+dz+offset,m.metal,windows);
-   }
+   box(.025,2.1,Math.min(4,zw*.5),side*(map.room.width/2-.18),2.7,z,colors.window,windows);
    bake(windows);
   });
-  const corridorRoof=shellPiece();box(5,.1,48,0,4.73,0,m.white,corridorRoof);
-  for(const z of [-18,-6,6,18])box(.5,.025,7,0,4.65,z,colors.window,corridorRoof);bake(corridorRoof);
-  c.label?.('SPRINT / TEKNOLOJİ OFİSİ',0,2.8,-23.8,0,4.6,.65,root);
+  const corridorRoof=shellPiece();box(5,.1,map.room.depth,0,4.73,0,m.white,corridorRoof);
+  for(const z of [-15,-7,3,13])box(.5,.025,4.5,0,4.65,z,colors.window,corridorRoof);bake(corridorRoof);
+  c.label?.('SPRINT / TEKNOLOJİ OFİSİ',0,2.8,-map.room.depth/2+.2,0,4.6,.65,root);
  }else if(id==='greenhouse'){
   // Pitched glazing, with the entire deck outside the greenhouse kept open to the sky.
   for(const x of [-4,4]){const roof=box(8.3,.025,22,x,4,-4,m.glass,root);roof.rotation.z=x<0?.18:-.18;roof.castShadow=false;}

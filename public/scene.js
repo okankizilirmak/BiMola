@@ -441,14 +441,10 @@ export function createScene(container){
    const height=object?(propTypes[object.userData.type]?.height||1):1.7;
    cameraTarget.copy(pos).add(new THREE.Vector3(0,Math.min(1.5,height*.65),0));
    const size=object?dimensions({type:object.userData.type}):null;
-   const targetDist=size?Math.max(2.4,Math.hypot(size.w,size.d)*.8,size.h*1.1):2.8;
-   const dir=new THREE.Vector3(0,0,1).applyEuler(new THREE.Euler(pitch-.2,yaw,0,'YXZ'));
-   cameraRay.set(cameraTarget,dir);cameraRay.far=targetDist+.3;
-   const hits=cameraRay.intersectObjects(collisionMeshes,false);
-   const actualDist=hits.length>0&&hits[0].distance>.25?Math.max(.55,hits[0].distance-.22):targetDist;
-   camera.position.copy(cameraTarget).addScaledVector(dir,actualDist);
-   camera.position.y=Math.max(.3,Math.min(currentRoom.height-.2,camera.position.y));
-   camera.lookAt(cameraTarget);
+   const distance=size?Math.max(3,Math.hypot(size.w,size.d)*.85,size.h*1.2):3;
+   const offset=new THREE.Vector3(0,0,distance).applyEuler(new THREE.Euler(pitch-.2,yaw,0,'YXZ'));
+   camera.position.copy(cameraTarget).add(offset);camera.position.y=Math.max(.3,Math.min(currentRoom.height-.2,camera.position.y));
+   camera.lookAt(cameraTarget);hideOccluders(camera.position,cameraTarget,object);
   }else{
    const next=moveSpectator(camera.position,yaw,spectator.keys||{},dt,currentRoom);camera.position.set(next.x,next.y,next.z);
    camera.rotation.set(pitch,yaw,0,'YXZ');
@@ -459,30 +455,16 @@ export function createScene(container){
   cameraTarget.copy(pos).add(new THREE.Vector3(0,Math.min(1.25,ph*.64+.17),0));
   const size=myObject?dimensions({type:myObject.userData.type}):null;
   const highUp=Math.max(0,cameraTarget.y-1.8);
-  const desiredDist=(myObject?Math.max(2.2,Math.hypot(size.w,size.d)*.75,(size.h||0)*1.2):2.8)+highUp*1.2;
+  const distance=(myObject?Math.max(2.5,Math.hypot(size.w,size.d)*.75,(size.h||0)*1.25):3.2)+highUp*1.6;
   if(myObject)myObject.visible=true;
-  const chosen=new THREE.Vector3(0,0,1).applyEuler(new THREE.Euler(Math.max(-.75,Math.min(.4,pitch))-.14,yaw,0,'YXZ'));
-  const rise=highUp>0?-Math.min(1.2,highUp*.8+.2):.45;
-
-  // Spring-Arm: duvara tosladığında kamera yumuşakça içeri yaklaşır, duvarın arkasına geçmez
-  let actualDist=desiredDist;
-  cameraRay.set(cameraTarget,chosen);cameraRay.far=desiredDist+.3;
-  const hits=cameraRay.intersectObjects(collisionMeshes,false);
-  if(hits.length>0&&hits[0].distance>.25){
-   actualDist=Math.max(.55,hits[0].distance-.22);
-  }
-
-  const desired=cameraTarget.clone().addScaledVector(chosen,actualDist);
-  desired.y+=rise*(actualDist/desiredDist);
-  const padX=Math.min(1.2,currentRoom.width*.04),padZ=Math.min(1.2,currentRoom.depth*.04);
-  desired.x=Math.max(-currentRoom.width/2+padX,Math.min(currentRoom.width/2-padX,desired.x));
-  desired.z=Math.max(-currentRoom.depth/2+padZ,Math.min(currentRoom.depth/2-padZ,desired.z));
-  desired.y=Math.max(.35,Math.min(currentRoom.height-.25,desired.y));
-  clampHiderCamera(desired,currentRoom);
-
-  if(!wasPlaying)camera.position.copy(desired);else camera.position.lerp(desired,1-Math.exp(-dt*28));
+  const chosen=new THREE.Vector3(0,0,1).applyEuler(new THREE.Euler(Math.max(-.75,Math.min(.32,pitch))-.16,yaw,0,'YXZ'));
+  const desired=cameraTarget.clone().addScaledVector(chosen,distance);
+  const rise=highUp>0?-Math.min(1.35,highUp*.85+.25):.5;
+  desired.y+=rise;clampHiderCamera(desired,currentRoom);
+  if(!wasPlaying)camera.position.copy(desired);else camera.position.lerp(desired,1-Math.exp(-dt*24));
   focus.copy(cameraTarget);if(highUp>0)focus.y-=Math.min(1.25,highUp*.85);
   camera.lookAt(focus);
+  if(refreshOccluders)hideOccluders(camera.position,cameraTarget,myObject);
   const body=people.get(myId);if(body)body.visible=!myObject&&own.status!=='found';gun.visible=false;}
  else{showAll();const desired=pos.clone().add(new THREE.Vector3(0,eyeHeight(own),0));
   camera.position.copy(desired);camera.rotation.set(Math.max(-1.35,Math.min(1.35,pitch)),yaw,0,'YXZ');gun.visible=!!entered&&own.status!=='found';

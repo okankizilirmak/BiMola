@@ -1,13 +1,13 @@
 # BiMola
 
-Arkadaşlarınla tarayıcıda buluşup çok oyunculu oyunlar oynayabileceğin bir oyun lobisi. İlk oyun **Nesne Avı**: mevcut 3D saklanma oyunu, sekiz haritası ve botlarıyla korunuyor.
+Arkadaşlarınla tarayıcıda buluşup çok oyunculu oyunlar oynayabileceğin bir oyun lobisi. Oyunlar: **Nesne Avı** (3D saklanma oyunu, sekiz harita ve botlar) ve **Ateş Köprüsü** (köprüde koşulan çok oyunculu bilgi yarışması).
 
 ```sh
 npm ci
 npm start
 ```
 
-[Lobi](http://localhost:3000) · [Nesne Avı](http://localhost:3000/games/prop-hunt/)
+[Lobi](http://localhost:3000) · [Nesne Avı](http://localhost:3000/games/prop-hunt/) · [Ateş Köprüsü](http://localhost:3000/games/ates-koprusu/)
 
 Node.js 24 (Docker ile aynı sürüm) önerilir. Geliştirme: `npm run dev`. Doğrulama: `npm test`. Ek derleme adımı yok; ES modülleri kullanılır.
 
@@ -18,10 +18,11 @@ Node.js 24 (Docker ile aynı sürüm) önerilir. Geliştirme: `npm run dev`. Do�
 - `server/games/registry.js`: oyunların tanımları ve gerektiğinde yüklenen sunucu modülleri.
 - `server/games/prop-hunt/`: Nesne Avı sunucu kuralları ve platform adaptörü.
 - `public/games/prop-hunt/`: yalnızca bu oyunun ekranları, Three.js sahnesi, fizik yardımcıları ve varlıkları.
+- `server/games/ates-koprusu/` + `public/games/ates-koprusu/`: Ateş Köprüsü kuralları, başlangıç soru seti (yalnız sunucuda), soru şeması/AI promptu ve köprü sahnesi.
 
 **Yeni oyun eklemek, lobiyi veya diğer oyunları değiştirmeyi gerektirmez.** Kendi istemci klasörünü ve sunucu adaptörünü ekleyip kataloğa kaydet. Çalışan iki farklı oyunla izolasyonu gösteren örnek test `test/platform.test.js` içindedir; test oyunu kullanıcı kataloğuna eklenmez.
 
-[Kararlar, sözleşmeler ve yeni oyun ekleme rehberi](docs/ARCHITECTURE.md) · [Nesne Avı oynanış notları](docs/NESNE-AVI.md)
+[Kararlar, sözleşmeler ve yeni oyun ekleme rehberi](docs/ARCHITECTURE.md) · [Nesne Avı oynanış notları](docs/NESNE-AVI.md) · [Ateş Köprüsü planı ve durumu](docs/ATES-KOPRUSU-PLAN.md)
 
 ## Performans yaklaşımı
 

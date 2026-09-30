@@ -1,6 +1,8 @@
 # Ateş Köprüsü — yeni BiMola oyunu için ürün ve uygulama planı
 
-> **Durum:** Tasarım belgesi. Bu oyun henüz geliştirilmedi. “Ateş Köprüsü” çalışma adıdır. Buradaki kesin kararlar konuşmada onaylanan kuralları, “öneri” olarak işaretlenen değerler ise uygulamaya başlamadan ayarlanabilecek ilk sürüm tercihlerini gösterir.
+> **Durum (30 Eylül 2026):** Aşama A ve B ile Aşama C'nin set yükleme kısmı uygulandı; oyun `ates-koprusu` kimliğiyle katalogda. Kalıcı misafir kimliği ve tüm zamanlar kaydı (Aşama C'nin ikinci yarısı) henüz yok; oda puanları oda kapanınca silinir.
+>
+> Uygulamada verilen kararlar: 12 sn seçim + 4 sn sonuç + 2 sn geçiş; herkes cevaplarsa 1,5 sn son çağrı. Yanlış veya boş cevap bir adım geri düşürür (0'ın altına inmez). Oda 1–12 kişi, oturumu kurucu başlatır. Başlangıç seti "Dünden Bugüne" (tarih + günümüz, 30 soru, 2/3/4 şıklar eşit). Oyun başlamadan yüklenen ilk set başlangıç setinin yerini alır; sonrakiler sıraya girer (en fazla 5). Set, Socket.IO'nun 4 KiB paket sınırı nedeniyle parçalar hâlinde gönderilir. Seçenek kimlikleri istemciye her soruda yeni üretilen rastgele belirteçlerle gider; AI'ın verdiği kimlikler doğru cevabı ele veremez. Son 3 saniyede katılan oyuncu o soruda boş sayılmaz.
 
 ## 1. Oyun fikri
 

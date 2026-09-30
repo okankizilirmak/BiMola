@@ -9,4 +9,14 @@ export const games = [{
     namespace: '/games/prop-hunt', protocolVersion: 1,
   },
   load: () => import('./prop-hunt/adapter.js').then(module => module.adapter),
+}, {
+  manifest: {
+    id: 'ates-koprusu', name: 'Ateş Köprüsü', tagline: 'Doğru tarafa koş.',
+    description: 'Herkes aynı soruyu görür, şıklar herkeste başka yerde. Doğru bilen ilerler, yanlış bilene kütük çarpar.',
+    category: 'Bilgi yarışması', minPlayers: 1, maxPlayers: 12, duration: 'Sonsuz akış',
+    bots: false, input: 'Klavye, fare veya dokunmatik', status: 'available',
+    entry: '/games/ates-koprusu/', cover: '/games/ates-koprusu/cover.svg',
+    namespace: '/games/ates-koprusu', protocolVersion: 1,
+  },
+  load: () => import('./ates-koprusu/adapter.js').then(module => module.adapter),
 }];

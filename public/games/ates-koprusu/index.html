@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1c1320">
+<meta name="description" content="Ateş Köprüsü: herkes aynı soruyu görür, şıklar herkeste başka yerde. Doğru tarafa koş, kütükten kaç.">
+<title>Ateş Köprüsü · BiMola</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body class="screen-home">
+<div id="scene" aria-hidden="true"></div>
+<div class="shade" aria-hidden="true"></div>
+<div id="labels" aria-hidden="true"></div>
+
+<header class="top">
+  <a class="brand" href="/" aria-label="BiMola oyun lobisine dön"><span class="brand-mark" aria-hidden="true">Ⅱ</span>BiMola</a>
+  <span class="game-name"><svg class="flame" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c1 4 5 5.5 5 11a5 5 0 0 1-10 0c0-2.6 1.3-4.1 2.4-5.2.2 1.8 1 2.7 2 3.2C11 8 11.5 5 12 2Z"/></svg>Ateş Köprüsü</span>
+  <nav>
+    <a class="ghost" href="/">← Oyunlar</a>
+    <button id="sound" class="ghost" type="button" aria-pressed="true">Ses açık</button>
+    <button id="quality" class="ghost" type="button">Görüntü: Yüksek</button>
+    <span id="connection" class="conn">Bağlanıyor…</span>
+  </nav>
+</header>
+
+<main id="home" class="panel-screen">
+  <section class="hero">
+    <p class="eyebrow">BİLGİ YARIŞMASI · SONSUZ KÖPRÜ</p>
+    <h1>Doğru tarafa<br><em>koş.</em></h1>
+    <p class="lead">Herkes aynı soruyu görür ama şıklar herkeste başka yerde. Doğru bilen bir adım ilerler, yanlış bilene kütük çarpar ve bir adım geri savrulur.</p>
+    <label class="field"><span>OYUNDAKİ ADIN</span><input id="name" maxlength="18" autocomplete="nickname" placeholder="Adın"></label>
+    <div class="actions"><button id="create" class="primary" type="button">Oda kur <span aria-hidden="true">→</span></button></div>
+    <form id="join-form" class="join"><label for="code">Davet kodun var mı?</label><div class="code-row"><input id="code" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="0000" autocomplete="off"><button class="secondary" type="submit">Katıl</button></div></form>
+    <p id="error" class="error" role="alert"></p>
+  </section>
+  <aside class="side">
+    <section class="card">
+      <div class="card-head"><h2>Açık odalar</h2><button id="rooms-refresh" class="ghost" type="button">Yenile</button></div>
+      <div id="rooms" class="rooms"><p class="muted">Odalar aranıyor…</p></div>
+    </section>
+    <section class="card rules">
+      <h2>Nasıl oynanır?</h2>
+      <ol>
+        <li><b>12 saniye</b> içinde doğru şıkkı seç. Seçimini süre bitene kadar değiştirebilirsin.</li>
+        <li>Kimse kimsenin seçimini göremez; şıkların yeri herkeste farklı.</li>
+        <li>Art arda doğru bildikçe ateş büyür: <b>100 → 125 → 150 → 175 → 200</b> puan.</li>
+        <li>Yanlış cevap puanını silmez; seriyi sıfırlar ve seni bir adım geri atar.</li>
+      </ol>
+    </section>
+  </aside>
+</main>
+
+<section id="room" class="panel-screen hidden" aria-labelledby="room-title">
+  <div class="room-panel">
+    <div class="room-head">
+      <div><p class="eyebrow">KÖPRÜ BAŞI</p><h2 id="room-title">Herkes köprüye toplanıyor.</h2></div>
+      <div class="invite"><small>DAVET KODU</small><button id="copy-code" class="code-chip" type="button" title="Davet bağlantısını kopyala"></button><button id="copy-link" class="ghost" type="button">Bağlantıyı kopyala</button></div>
+    </div>
+    <div class="room-grid">
+      <section><h3>Oyuncular <span id="player-count" class="count"></span></h3><div id="lobby-players" class="player-list"></div></section>
+      <section><h3>Soru seti</h3><div id="lobby-set" class="set-card"></div><div id="lobby-queue" class="queue"></div><button class="secondary open-sets" type="button">Soru seti ekle <span aria-hidden="true">＋</span></button></section>
+    </div>
+    <div class="room-foot"><button class="ghost leave" type="button">← Odadan ayrıl</button><p id="lobby-note" class="muted"></p><button id="start" class="primary" type="button">Köprüyü başlat <span aria-hidden="true">→</span></button></div>
+    <p id="room-error" class="error" role="alert"></p>
+  </div>
+</section>
+
+<section id="hud" class="hidden" aria-live="off">
+  <div class="hud-top">
+    <div class="me-card"><small>PUANIN</small><b id="my-score">0</b><span id="my-streak" class="streak"></span></div>
+    <div class="question-card">
+      <div class="q-meta"><span id="q-round"></span><span id="q-set"></span></div>
+      <h2 id="q-text"></h2>
+      <div class="timer" aria-hidden="true"><i id="timer-fill"></i></div>
+      <p id="q-status" class="q-status" role="status" aria-live="polite"></p>
+    </div>
+    <div class="hud-buttons"><button class="glass open-sets" type="button">Set ekle ＋</button><button id="menu-open" class="glass" type="button">Menü</button></div>
+  </div>
+  <aside class="board" aria-label="Sıralama"><div class="board-head"><h3>Sıralama</h3><small>SON 10</small></div><ol id="board"></ol></aside>
+  <div id="result-banner" class="result-banner" role="status"></div>
+  <div id="answers" class="answers" role="group" aria-label="Cevap seçenekleri"></div>
+</section>
+
+<dialog id="menu-dialog">
+  <button class="close" type="button" data-close aria-label="Kapat">×</button>
+  <p class="eyebrow">KISA BİR MOLA</p><h2>Köprü akmaya devam ediyor.</h2>
+  <p class="muted">Menü açıkken de sorular geliyor; cevap vermezsen boş sayılır.</p>
+  <div class="invite"><small>DAVET KODU</small><button class="code-chip copy-invite" type="button"></button></div>
+  <label class="field"><span>HAREKET</span><select id="motion"><option value="full">Tam animasyon</option><option value="reduced">Azaltılmış hareket</option></select></label>
+  <button class="primary" type="button" data-close>Oyuna dön <span aria-hidden="true">→</span></button>
+  <button class="ghost leave" type="button">Odadan ayrıl</button>
+</dialog>
+
+<dialog id="sets-dialog" class="wide">
+  <button class="close" type="button" data-close aria-label="Kapat">×</button>
+  <p class="eyebrow">KENDİ SORULARIN</p><h2>Soru seti ekle.</h2>
+  <p class="muted">AI promptunu kopyala, istediğin AI aracına yapıştır ve dönen JSON'u aşağıya koy. Kendin hazırladığın JSON'u da yapıştırabilirsin. Yeni set, oynanan set bitince devreye girer; oyun başlamadıysa hemen seçilir.</p>
+  <div class="steps">
+    <section>
+      <h3><span>1</span> Promptu hazırla</h3>
+      <div class="form-grid">
+        <label class="field"><span>BAŞLIK</span><input id="p-title" maxlength="60" value="Dünden Bugüne"></label>
+        <label class="field"><span>KATEGORİ</span><input id="p-category" maxlength="40" value="Genel Kültür"></label>
+        <label class="field"><span>DİL</span><input id="p-language" maxlength="12" value="tr"></label>
+        <label class="field"><span>SORU SAYISI</span><input id="p-count" type="number" min="5" max="80" value="30"></label>
+        <label class="field full"><span>TEMA NOTU (İSTEĞE BAĞLI)</span><input id="p-theme" maxlength="160" placeholder="Ör. 90'lar Türkiye'si, bilim tarihi, futbol…"></label>
+      </div>
+      <button id="copy-prompt" class="secondary" type="button">AI promptunu kopyala <span aria-hidden="true">⧉</span></button>
+      <textarea id="prompt-fallback" class="hidden" readonly rows="6" aria-label="AI promptu"></textarea>
+    </section>
+    <section>
+      <h3><span>2</span> JSON'u yapıştır</h3>
+      <textarea id="set-json" rows="10" spellcheck="false" placeholder='{"schemaVersion": 1, "title": "…", "questions": [ … ]}' aria-label="Soru seti JSON"></textarea>
+      <div class="row"><button id="check-set" class="secondary" type="button">Kontrol et</button><button id="add-set" class="primary" type="button" disabled>Sete ekle <span aria-hidden="true">→</span></button></div>
+      <div id="set-feedback" class="feedback" role="status" aria-live="polite"></div>
+    </section>
+  </div>
+</dialog>
+
+<div id="toast" role="status"></div>
+<script src="/socket.io/socket.io.js"></script>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

@@ -19,4 +19,14 @@ export const games = [{
     namespace: '/games/ates-koprusu', protocolVersion: 1,
   },
   load: () => import('./ates-koprusu/adapter.js').then(module => module.adapter),
+}, {
+  manifest: {
+    id: 'snake', name: 'Snake Showdown 3D', tagline: 'Neon arenada kapış.',
+    description: 'Yılanını büyüt, güçlendiricileri topla ve arenada rakiplerine meydan oku.',
+    category: 'Arcade', minPlayers: 1, maxPlayers: 12, duration: 'Sonsuz akış',
+    bots: true, input: 'Klavye veya dokunmatik', status: 'available',
+    entry: '/games/snake/', cover: '/games/snake/assets/snake-head.svg',
+    namespace: '/games/snake', protocolVersion: 1,
+  },
+  load: () => import('./snake/adapter.js').then(module => module.adapter),
 }];

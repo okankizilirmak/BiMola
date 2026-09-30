@@ -1,14 +1,15 @@
-import {randomInt, randomBytes} from 'node:crypto';
+import {randomInt, randomBytes, randomUUID} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {validateSet, summarizeSet, LIMITS} from '../../../public/games/ates-koprusu/questions.js';
 
 // Sunucu otoritelidir: sıra, süre, doğru cevap, jokerler ve puan yalnızca burada belirlenir.
 // Akış: lobby (hazır kontrolü) → countdown → question → reveal → pause → … → podyum (lobby).
-export const TIMING = Object.freeze({countdown: 3000, question: 12000, reveal: 4000, pause: 2000, lastCall: 1500, lateJoin: 3000, freeze: 4000});
+export const TIMING = Object.freeze({countdown: 3000, question: 12000, reveal: 4000, pause: 2000, lastCall: 1500, lateJoin: 3000, freeze: 4000, fog: 2500});
 export const POINTS = Object.freeze([100, 125, 150, 175, 200]);
 export const SPEED_MAX = 50;
 export const MAX_PLAYERS = 12, MAX_POOL_SETS = 8, MAX_POOL_QUESTIONS = 200, RECENT = 10, FEED = 6;
-export const JOKERS = Object.freeze({double: 'x2 Çifte Ateş', half: '50/50', shield: 'Kalkan', freeze: 'Dondur'});
+export const JOKERS = Object.freeze({double: 'x2 Çifte Ateş', half: '50/50', shield: 'Kalkan', freeze: 'Dondur', shuffle: 'Karıştır', fog: 'Sis', slow: 'Hız Kes'});
+export const ATTACKS = Object.freeze(['freeze', 'shuffle', 'fog', 'slow']);
 
 const starter = validateSet(JSON.parse(readFileSync(new URL('./starter-set.json', import.meta.url), 'utf8')));
 if (!starter.set) throw new Error(`Başlangıç seti geçersiz: ${starter.errors.join('; ')}`);
@@ -24,18 +25,18 @@ function shuffle(list) {
 }
 const token = () => randomBytes(4).toString('hex');
 const freshStats = () => ({score: 0, streak: 0, bestStreak: 0, position: 0, correct: 0, answered: 0, recent: [], lastRound: 0, skipRound: 0,
-  jokers: {double: 1, half: 1, shield: 1, freeze: 1}, jokersUsed: 0, hits: 0, fastest: null});
+  jokers: Object.fromEntries(Object.keys(JOKERS).map(key => [key, 1])), jokersUsed: 0, hits: 0, fastest: null});
 
 export function createRoom({code, host, timing = TIMING}) {
-  return {code, host, players: {}, phase: 'lobby', until: 0, round: 0, game: 0, timing: {...TIMING, ...timing}, current: null, deck: null, pool: [], uploads: {}, podium: null, feed: [], feedId: 0, nextGolden: 0};
+  return {code, host, players: {}, phase: 'lobby', until: 0, round: 0, game: 0, matchId: null, scoreEvents: [], timing: {...TIMING, ...timing}, current: null, deck: null, pool: [], uploads: {}, podium: null, feed: [], feedId: 0, nextGolden: 0};
 }
 function announce(room, text, kind = 'info') {
   room.feed = [...room.feed, {id: ++room.feedId, text, kind}].slice(-FEED);
 }
 const inGame = room => !['lobby', 'countdown'].includes(room.phase);
 
-export function addPlayer(room, {id, name}, now = Date.now()) {
-  const p = room.players[id] = {id, name, ready: false, joinedAt: now, ...freshStats()};
+export function addPlayer(room, {id, name, profileId}, now = Date.now()) {
+  const p = room.players[id] = {id, name, profileId, ready: false, joinedAt: now, ...freshStats()};
   const current = room.current;
   if (inGame(room) && current) {
     current.orders[id] = shuffle(current.tokens);
@@ -77,7 +78,7 @@ export function startGame(room, now) {
     seen.add(key); questions.push({...q, setTitle: source.set.title, by: source.by});
   }
   room.deck = {questions: shuffle(questions), index: 0, sets: sources.map(s => ({title: s.set.title, by: s.by, count: s.set.questions.length}))};
-  room.pool = []; room.podium = null; room.game++; room.feed = [];
+  room.pool = []; room.podium = null; room.game++; room.matchId = randomUUID(); room.feed = [];
   for (const p of Object.values(room.players)) Object.assign(p, freshStats(), {ready: false});
   room.nextGolden = randomInt(4, 7);
   announce(room, `${questions.length} soruluk köprü başladı!`, 'start');
@@ -96,7 +97,7 @@ export function nextQuestion(room, now) {
   const list = Object.values(tokens);
   room.round++;
   room.current = {round: room.round, number, total, question, golden, texts, tokens: list, correct: tokens[question.correctOptionId],
-    orders: {}, choices: {}, answeredAt: {}, effects: {}, frozen: {}, results: null, startedAt: now};
+    orders: {}, choices: {}, answeredAt: {}, effects: {}, frozen: {}, fogged: {}, slowed: {}, attacked: {}, attackers: {}, results: null, startedAt: now};
   for (const id of Object.keys(room.players)) room.current.orders[id] = shuffle(list);
   if (golden) announce(room, number === total ? 'Final sorusu altın: puanlar x2!' : 'Altın soru! Bu soruda puanlar x2.', 'golden');
   room.phase = 'question'; room.until = now + room.timing.question;
@@ -115,6 +116,7 @@ function endGame(room) {
   const joker = best('max', p => p.jokersUsed); if (joker) awards.push({title: 'Joker ustası', name: joker.name, value: `${joker.jokersUsed} joker`});
   const magnet = best('max', p => p.hits); if (magnet) awards.push({title: 'Kütük mıknatısı', name: magnet.name, value: `${magnet.hits} çarpma`});
   room.podium = {game: room.game, ranking, awards, total: room.deck.questions.length, sets: room.deck.sets};
+  for (const p of Object.values(room.players)) if (p.profileId && p.answered) room.scoreEvents.push({profileId: p.profileId, name: p.name, matchId: room.matchId, round: room.round + 1, completed: true});
   room.phase = 'lobby'; room.until = 0; room.current = null; room.deck = null;
   for (const p of Object.values(room.players)) p.ready = false;
 }
@@ -136,7 +138,7 @@ export function useJoker(room, id, data, now) {
   const current = room.current, p = room.players[id], type = data?.type;
   if (room.phase !== 'question' || !current || now >= room.until) return {error: 'Jokerler yalnızca soru sürerken kullanılır.'};
   if (!p || p.skipRound === current.round) return {error: 'Bu soruda joker kullanamazsın.'};
-  if (!Object.hasOwn(JOKERS, type)) return {error: 'Böyle bir joker yok.'};
+  if (typeof type !== 'string' || !Object.hasOwn(JOKERS, type)) return {error: 'Böyle bir joker yok.'};
   if (!(p.jokers[type] > 0)) return {error: `${JOKERS[type]} hakkın bitti.`};
   const effects = current.effects[id] ||= {};
   if (effects[type]) return {error: 'Bu jokeri bu soruda zaten kullandın.'};
@@ -146,17 +148,27 @@ export function useJoker(room, id, data, now) {
     effects.half = shuffle(wrong).slice(0, current.tokens.length === 3 ? 1 : 2);
     if (effects.half.includes(current.choices[id])) { delete current.choices[id]; delete current.answeredAt[id]; }
     announce(room, `${p.name} 50/50 kullandı.`, 'joker');
-  } else if (type === 'freeze') {
+  } else if (ATTACKS.includes(type)) {
     const target = room.players[data?.target];
-    if (!target || target.id === id) return {error: 'Dondurmak için bir rakip seç.'};
+    if (!target || target.id === id) return {error: 'Çakallık için bir rakip seç.'};
     if (target.skipRound === current.round) return {error: 'Bu oyuncu bu soruda oynamıyor.'};
-    if (current.frozen[target.id] > now) return {error: `${target.name} zaten donmuş.`};
-    const until = Math.min(room.until - 1000, now + room.timing.freeze);
-    if (until <= now) return {error: 'Süre dondurmak için çok az.'};
-    current.frozen[target.id] = until; effects.freeze = target.id;
-    announce(room, `${p.name}, ${target.name} oyuncusunu dondurdu!`, 'freeze');
+    if (current.attackers[id]) return {error: 'Bir soruda yalnızca bir çakallık yapabilirsin.'};
+    if (current.effects[target.id]?.shield) return {error: `${target.name} kalkanıyla korunuyor. Hakkın harcanmadı.`};
+    if (current.attacked[target.id]) return {error: `${target.name} bu soruda zaten çakallık gördü. Başka rakip seç.`};
+    if (room.until - now < 2000) return {error: 'Son 2 saniyede çakallık yapılamaz. Hakkın sende kaldı.'};
+    if (type === 'freeze') current.frozen[target.id] = Math.min(room.until - 1000, now + room.timing.freeze);
+    if (type === 'fog') current.fogged[target.id] = Math.min(room.until - 1000, now + room.timing.fog);
+    if (type === 'slow') current.slowed[target.id] = true;
+    if (type === 'shuffle') {
+      const order = current.orders[target.id], mixed = shuffle(order);
+      if (mixed.every((t, i) => t === order[i])) mixed.push(mixed.shift());
+      current.orders[target.id] = mixed; // Seçilen cevap kimliği korunur, yalnızca şerit değişir.
+    }
+    current.attacked[target.id] = {type, by: p.name}; current.attackers[id] = true; effects[type] = target.id;
+    announce(room, `${p.name} → ${target.name}: ${JOKERS[type]}!`, type === 'freeze' ? 'freeze' : 'attack');
   } else {
     effects[type] = true;
+    if (type === 'shield') { delete current.frozen[id]; delete current.fogged[id]; delete current.slowed[id]; }
     announce(room, type === 'double' ? `${p.name} x2 Çifte Ateş'i yaktı!` : `${p.name} kalkanını kaldırdı.`, 'joker');
   }
   p.jokers[type]--; p.jokersUsed++;
@@ -175,23 +187,30 @@ export function reveal(room, now) {
     if (correct) {
       p.streak++; p.correct++; p.bestStreak = Math.max(p.bestStreak, p.streak); p.position++;
       const elapsed = current.answeredAt[p.id] - current.startedAt;
-      base = pointsFor(p.streak); speed = speedBonus(elapsed, room.timing.question);
+      base = pointsFor(p.streak); speed = current.slowed[p.id] ? 0 : speedBonus(elapsed, room.timing.question);
       mult = (effects.double ? 2 : 1) * (current.golden ? 2 : 1);
       p.fastest = p.fastest === null ? elapsed : Math.min(p.fastest, elapsed);
     } else if (effects.shield) shielded = true; // Kütük kalkana çarpar: seri ve yer korunur.
     else { p.streak = 0; p.position = Math.max(0, p.position - 1); p.hits++; }
     const points = (base + speed) * mult;
     p.score += points;
+    if (p.profileId) room.scoreEvents.push({profileId: p.profileId, name: p.name, matchId: room.matchId, round: current.round, points, score: p.score, streak: p.bestStreak, correct: Number(correct), answered: 1});
     p.recent = [...p.recent, correct].slice(-RECENT);
     results[p.id] = {correct, answered: !!choice, points, base, speed, mult, double: !!effects.double, shielded, from, position: p.position, streak: p.streak,
-      lane: choice ? current.orders[p.id].indexOf(choice) : -1};
+      slowed: !!current.slowed[p.id], lane: choice ? current.orders[p.id].indexOf(choice) : -1};
   }
   current.results = results;
   room.phase = 'reveal'; room.until = now + room.timing.reveal;
 }
 
 export function tick(room, now) {
-  if (room.phase === 'lobby' || now < room.until) return false;
+  let effectsEnded = false;
+  if (room.phase === 'question' && room.current) for (const bucket of [room.current.frozen, room.current.fogged]) {
+    for (const [id, until] of Object.entries(bucket)) if (now >= until) { delete bucket[id]; effectsEnded = true; }
+  }
+  // Buz/sis çözüldüğü anda yayın gönderilir; 1 saniyelik düzenli yayını bekleyip
+  // rakibin kalan cevap süresini tüketmeyiz.
+  if (room.phase === 'lobby' || now < room.until) return effectsEnded;
   if (room.phase === 'countdown') startGame(room, now);
   else if (room.phase === 'question') reveal(room, now);
   else if (room.phase === 'reveal') { room.phase = 'pause'; room.until = now + room.timing.pause; }
@@ -244,16 +263,19 @@ export function view(room, id, now) {
     id: p.id, name: p.name, ready: p.ready, score: p.score, streak: p.streak, bestStreak: p.bestStreak, position: p.position, correct: p.correct, answered: p.answered, recent: p.recent, jokers: p.jokers,
     hasAnswered: open && current ? !!current.choices[p.id] : false, waiting: current ? p.skipRound === current.round : false,
     frozen: open && current?.frozen[p.id] > now ? current.frozen[p.id] : 0,
+    protected: open && !!current?.effects[p.id]?.shield,
+    attacked: open && !!current?.attacked[p.id],
   }));
   let question = null;
   if (current && inGame(room)) {
     const order = current.orders[id] || [], effects = current.effects[id] || {}, frozenUntil = open && current.frozen[id] > now ? current.frozen[id] : 0;
     question = {
       round: current.round, number: current.number, total: current.total, golden: current.golden, setTitle: current.question.setTitle, by: current.question.by,
-      text: current.question.text, difficulty: current.question.difficulty, frozenUntil,
+      text: open && current.fogged[id] > now ? null : current.question.text, difficulty: current.question.difficulty, frozenUntil,
+      fogUntil: open ? current.fogged[id] || 0 : 0, slowed: open && !!current.slowed[id], attack: open ? current.attacked[id] || null : null,
       // Donmuş oyuncu şık metinlerini görmez; 50/50 ile silinenler yerinde kalır ama işaretlenir.
       options: order.map(t => ({id: t, text: frozenUntil ? null : current.texts[t], removed: !!effects.half?.includes(t)})),
-      choice: current.choices[id] || null, effects: {double: !!effects.double, shield: !!effects.shield, half: !!effects.half, freeze: effects.freeze || null},
+      choice: current.choices[id] || null, effects: {...Object.fromEntries(Object.keys(JOKERS).map(type => [type, effects[type] || false])), attacked: !!current.attackers[id]},
     };
     if (!open) Object.assign(question, {correct: current.correct, explanation: current.question.explanation, results: current.results});
     if (!open) question.options = order.map(t => ({id: t, text: current.texts[t], removed: !!effects.half?.includes(t)}));

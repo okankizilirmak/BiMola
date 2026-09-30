@@ -1,6 +1,6 @@
 # Ateş Köprüsü — yeni BiMola oyunu için ürün ve uygulama planı
 
-> **Durum (30 Eylül 2026, 2. sürüm):** Oynanabilir; `ates-koprusu` kimliğiyle katalogda. Kalıcı misafir kimliği ve tüm zamanlar kaydı henüz yok; oda puanları oda kapanınca silinir.
+> **Durum (30 Eylül 2026, 3. sürüm):** Oynanabilir; `ates-koprusu` kimliğiyle katalogda. Kalıcı misafir kimliği, toplam puan, maç rekoru, en uzun seri ve tüm zamanlar sıralaması eklendi. Mobil sıralama/hazır düğmesi ve üç aşamalı set yükleme yenilendi. Dondur'a Karıştır, Sis ve Hız Kes eklendi; kalkan saldırılardan da korur. [Güncel kurallar ve yayınlama notları](ATES-KOPRUSU-JOKERLER.md). Aşağıdaki bölümler ilk ürün planını da içerir; güncel davranış için bu durum özeti ve joker belgesi esas alınmalıdır.
 >
 > **Oyun akışı (bu belgedeki "sonsuz akış" fikrinin yerini aldı):** Lobide herkes "Hazırım" der; herkes hazır olunca 3 sn geri sayım başlar. Oyuncuların yüklediği setler (3–80 soru) tek bir havuzda birleşir ve karışık oynanır; havuz boşsa "Dünden Bugüne" (30 soru) kullanılır. Havuz bitince oyun biter, podyum ve ödüller (en uzun ateş, en hızlı parmak, joker ustası, kütük mıknatısı) gösterilir, oda tekrar hazır lobisine döner. Set, oyun sürerken eklenirse sonraki oyunun havuzuna girer (en fazla 8 set / 200 soru).
 >

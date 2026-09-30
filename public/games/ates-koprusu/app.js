@@ -5,15 +5,23 @@ import {createAudio} from './audio.js';
 const $ = id => document.getElementById(id), $$ = selector => [...document.querySelectorAll(selector)];
 const el = (tag, className, text) => { const node = document.createElement(tag); if (className) node.className = className; if (text !== undefined) node.textContent = text; return node; };
 const GAME = 'ates-koprusu', KEYS = ['A', 'B', 'C', 'D'];
+const ATTACKS = ['freeze', 'shuffle', 'fog', 'slow'];
+const JOKER_INFO = {
+  double: ['Çifte Ateş', 'Bu soruda kazandığın puanı ikiye katlar.'], half: ['50/50', '3–4 şıklı sorularda yanlış seçenekleri azaltır.'],
+  shield: ['Kalkan', 'Bu soruda kütükten ve çakallıklardan korur; buz ve sisi temizler.'], freeze: ['Dondur', 'Rakibin şıklarını en fazla 4 saniye dondurur.'],
+  shuffle: ['Karıştır', 'Rakibin şıklarını yer değiştirir. Seçtiği cevap korunur.'], fog: ['Sis', 'Rakibin sorusunu en fazla 2,5 saniye örter; şıklar açık kalır.'],
+  slow: ['Hız Kes', 'Rakibin bu sorudaki hız bonusunu kaldırır; doğru cevap ve seri puanı kalır.'],
+};
 const flameSvg = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c1 4 5 5.5 5 11a5 5 0 0 1-10 0c0-2.6 1.3-4.1 2.4-5.2.2 1.8 1 2.7 2 3.2C11 8 11.5 5 12 2Z"/></svg>';
 const store = {
   get: (key, fallback) => { try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; } },
   set: (key, value) => { try { localStorage.setItem(key, value); } catch { /* depolama kapalı olabilir */ } },
 };
-const socket = io('/games/' + GAME), audio = createAudio();
+const socket = io('/games/' + GAME, {autoConnect: false}), audio = createAudio();
 let state = null, code = null, offset = 0, scene = null, colorFor = () => '#ff9f43';
 let builtRound = 0, lastRevealRound = 0, lastTick = -1, lastCount = -1, timer = 0, roomsTimer = 0, roomsRequest = null, closing = false, pendingSet = null, uploading = false;
 const feedSeen = new Map();
+let builtOrder = '', jokerTab = 'support', wizardStep = 1, records = null, lastPodium = '', bestBefore = 0, recordRequest = null, lastAttackRound = 0;
 let quality = store.get('ates-quality', matchMedia('(max-width: 700px)').matches ? 'low' : 'high');
 let motion = store.get('ates-motion', matchMedia('(prefers-reduced-motion: reduce)').matches ? 'reduced' : 'full');
 audio.enabled = store.get('ates-sound', '1') === '1';
@@ -44,6 +52,38 @@ const me = () => state?.players.find(p => p.id === state.me);
 const inviteLink = () => `${location.origin}/games/${GAME}/?room=${code || ''}`;
 async function copy(text, message) { try { await navigator.clipboard.writeText(text); toast(message); return true; } catch { return false; } }
 const streakLabel = streak => streak < 2 ? '' : `${flameSvg}${streak} seri`;
+
+// Kimlik sunucunun HttpOnly çerezinde kalır; istemci hiçbir zaman puan göndermez.
+function recordCards(container, stats) {
+  container.replaceChildren(...[['Toplam puan', stats.total], ['Maç rekoru', stats.best], ['En uzun seri', stats.streak]].map(([label, value]) => {
+    const card = el('div', 'record'); card.append(el('b', '', value.toLocaleString('tr')), el('small', '', label)); return card;
+  }));
+}
+async function loadScores() {
+  if (recordRequest) return recordRequest;
+  recordRequest = (async () => {
+    try {
+      const response = await fetch(`/api/games/${GAME}/scores`, {cache: 'no-store'});
+      if (!response.ok) throw new Error('Puan defteri açılamadı.');
+      records = await response.json();
+      recordCards($('home-records'), records.me); recordCards($('match-records'), records.me);
+      $('records-note').textContent = records.durable ? 'Puanların bu tarayıcıdaki oyuncu kimliğinle korunur. Çerezini silersen yeni oyuncu olursun.' : 'Geçici sunucu: puanlar yeniden başlatmada kaybolur.';
+      $('alltime-board').replaceChildren(...records.rows.map(p => {
+        const row = el('li', p.mine ? 'me' : ''); row.append(el('span', '', `${p.rank}. ${p.name}${p.mine ? ' (sen)' : ''}`), el('b', '', p.total.toLocaleString('tr'))); return row;
+      }));
+      $('alltime-note').textContent = records.rows.length ? `${records.rank ? `Senin sıran: ${records.rank}. · ` : ''}İlk 20 oyuncu gösteriliyor.` : 'İlk ateşi sen yak. Oynadıkça puanların burada birikir.';
+      if (state?.podium) $('match-record-note').textContent = `${records.me.best > bestBefore ? 'Yeni kişisel maç rekoru! · ' : ''}${records.me.played} maç tamamladın. Kazandığın puanlar ateş defterine eklendi.`;
+    } catch {
+      for (const id of ['records-note', 'match-record-note', 'alltime-note']) $(id).textContent = 'Puan defteri yüklenemedi. Bağlantını kontrol edip yeniden dene.';
+    } finally { recordRequest = null; }
+  })();
+  return recordRequest;
+}
+$('alltime-open').addEventListener('click', () => { $('alltime-dialog').showModal(); loadScores(); });
+fetch('/api/player', {cache: 'no-store'}).then(response => {
+  if (!response.ok) throw new Error('Oyuncu kimliği açılamadı.');
+  return loadScores();
+}).catch(() => { $('records-note').textContent = 'Oyuncu kimliğin açılamadı; bu oturumdaki puanların kaydedilemeyebilir.'; }).finally(() => { if (!closing) socket.connect(); });
 
 // ---------- Giriş ekranı ----------
 $('name').value = readName() || '';
@@ -101,6 +141,8 @@ socket.on('state', next => {
   if (next.gameId !== GAME || next.protocolVersion !== 1) return;
   offset = next.now - Date.now();
   const previous = state; state = next;
+  if ($('sets-dialog').open) setDestination();
+  if (next.phase === 'countdown' && previous?.phase === 'lobby') bestBefore = records?.me.best || 0;
   for (const b of $$('.copy-invite')) b.textContent = code || '';
   scene?.setState(next, next.me, offset);
   if (['lobby', 'countdown'].includes(next.phase)) {
@@ -109,11 +151,12 @@ socket.on('state', next => {
   } else { $('countdown').classList.add('hidden'); screen('game'); renderGame(); startTimer(); }
 });
 function resetRoom() {
-  state = null; code = null; builtRound = lastRevealRound = 0; stopTimer();
+  state = null; code = null; builtRound = lastRevealRound = lastAttackRound = 0; builtOrder = ''; lastPodium = ''; feedSeen.clear(); stopTimer();
   history.replaceState(null, '', location.pathname);
   for (const d of $$('dialog[open]')) d.close();
   $('countdown').classList.add('hidden');
   screen('home');
+  loadScores();
   scene?.setState({players: [], phase: 'lobby', question: null, timing: {reveal: 4000}, until: 0}, null, 0);
 }
 function leave() { socket.emit('leave'); resetRoom(); }
@@ -126,6 +169,8 @@ function renderPodium() {
   $('room-eyebrow').textContent = podium ? `${podium.game}. OYUN BİTTİ` : 'KÖPRÜ BAŞI';
   $('room-title').textContent = podium ? 'Tekrar mı? Yeni setleri ekleyin, hazır olun.' : 'Herkes hazır olunca köprü açılır.';
   if (!podium) return;
+  const key = `${code}:${podium.game}`;
+  if (lastPodium !== key) { lastPodium = key; $('match-record-note').textContent = 'Puanların ateş defterine ekleniyor…'; loadScores(); }
   const top = podium.ranking.slice(0, 3), order = [1, 0, 2].filter(i => top[i]);
   $('podium-stage').replaceChildren(...order.map(i => {
     const p = top[i], step = el('div', `step p${i + 1}`);
@@ -181,6 +226,7 @@ for (const button of [$('copy-code'), $('copy-link'), ...$$('.copy-invite')]) bu
 // Kartlar her soruda bir kez kurulur ve yerinde güncellenir; yayın geldiğinde tıklanan düğme silinmez.
 function buildCards(qn) {
   builtRound = qn.round;
+  builtOrder = qn.options.map(o => o.id).join(',');
   const box = $('answers');
   box.classList.toggle('four', qn.options.length === 4);
   box.replaceChildren(...qn.options.map((option, i) => {
@@ -195,7 +241,7 @@ function buildCards(qn) {
   }));
 }
 function updateCards(qn) {
-  if (qn.round !== builtRound) buildCards(qn);
+  if (qn.round !== builtRound || builtOrder !== qn.options.map(o => o.id).join(',')) buildCards(qn);
   const revealed = state.phase !== 'question', mine = me(), frozen = qn.frozenUntil > serverNow();
   [...$('answers').children].forEach((button, i) => {
     const option = qn.options[i], chosen = qn.choice === option.id;
@@ -207,7 +253,7 @@ function updateCards(qn) {
     button.classList.toggle('correct', revealed && option.id === qn.correct);
     button.classList.toggle('wrong', revealed && chosen && option.id !== qn.correct);
     button.classList.toggle('dim', revealed && !chosen && option.id !== qn.correct);
-    button.disabled = revealed || !!option.removed || !!mine?.waiting;
+    button.disabled = revealed || frozen || !!option.removed || !!mine?.waiting;
     button.setAttribute('aria-pressed', String(chosen));
     button.setAttribute('aria-label', `${KEYS[i]}: ${frozen ? 'buz tuttu' : option.text}${option.removed ? ' (silindi)' : ''}`);
   });
@@ -219,13 +265,19 @@ function renderJokers(qn) {
     const type = button.dataset.joker, left = mine?.jokers?.[type] || 0, active = !!qn?.effects?.[type];
     button.classList.toggle('active', active && open);
     button.classList.toggle('used', !left && !active);
-    button.disabled = !open || !left || (type === 'half' && qn.options.length < 3) || (type === 'freeze' && state.players.length < 2);
+    button.classList.toggle('hidden', ATTACKS.includes(type) !== (jokerTab === 'attack'));
+    const attack = ATTACKS.includes(type);
+    button.disabled = !open || !left || (type === 'half' && qn.options.length < 3) || (attack && (qn.effects.attacked || state.until - serverNow() < 2000 || !state.players.some(p => p.id !== state.me && !p.waiting && !p.attacked && !p.protected)));
+    button.setAttribute('aria-label', `${JOKER_INFO[type][0]} · ${left} hak. ${JOKER_INFO[type][1]}`);
   }
+  $('support-left').textContent = ['double', 'half', 'shield'].reduce((sum, key) => sum + (mine?.jokers[key] || 0), 0);
+  $('attack-left').textContent = ATTACKS.reduce((sum, key) => sum + (mine?.jokers[key] || 0), 0);
   if (!open) $('freeze-menu').classList.add('hidden');
 }
 function renderFeed() {
   const now = Date.now();
   for (const item of state.feed) if (!feedSeen.has(item.id)) feedSeen.set(item.id, now);
+  for (const id of feedSeen.keys()) if (!state.feed.some(item => item.id === id)) feedSeen.delete(id);
   const visible = state.feed.filter(item => now - feedSeen.get(item.id) < 5000).slice(-3);
   const box = $('feed'), ids = visible.map(item => String(item.id));
   if ([...box.children].map(c => c.dataset.id).join() === ids.join()) return;
@@ -235,12 +287,19 @@ function renderGame() {
   const qn = state.question, mine = me();
   $('my-score').textContent = mine ? mine.score.toLocaleString('tr') : '0';
   $('my-streak').innerHTML = mine ? streakLabel(mine.streak) : '';
+  const fireLevel = Math.min(5, mine?.streak || 0), meter = $('fire-meter');
+  if (!meter.children.length) meter.append(...Array.from({length: 5}, () => el('i')));
+  [...meter.children].forEach((bar, index) => bar.classList.toggle('lit', index < fireLevel));
+  meter.setAttribute('aria-label', `Ateş seviyesi ${fireLevel}/5`);
+  $('next-points').textContent = `Sonraki doğru: ${state.points[Math.min(mine?.streak || 0, 4)]} puan + hız`;
   if (!qn) return;
   $('q-round').textContent = `Soru ${qn.number}/${qn.total}`;
   $('q-set').textContent = `${qn.setTitle} · ${qn.by}`;
   $('q-golden').classList.toggle('hidden', !qn.golden);
   $('question-card').classList.toggle('golden', qn.golden);
-  if ($('q-text').textContent !== qn.text) $('q-text').textContent = qn.text;
+  const questionText = qn.text || 'Sis çöktü… Şıklar açık, soruyu hatırlıyor musun?';
+  if ($('q-text').textContent !== questionText) $('q-text').textContent = questionText;
+  $('question-card').classList.toggle('fogged', state.phase === 'question' && qn.fogUntil > serverNow());
   updateCards(qn); renderJokers(qn); renderFeed();
   const result = qn.results?.[state.me], status = $('q-status');
   status.className = 'q-status';
@@ -255,6 +314,16 @@ function renderGame() {
   if (state.phase === 'question') hideBannerFor(qn.round);
   if (state.phase === 'reveal' && qn.round !== lastRevealRound) { lastRevealRound = qn.round; showResult(result, qn); }
   renderBoard();
+  renderAttackNotice();
+}
+function renderAttackNotice() {
+  const qn = state.question, notice = $('attack-notice');
+  const active = state.phase === 'question' && qn?.attack && !qn.effects.shield;
+  notice.classList.toggle('hidden', !active);
+  if (!active) return;
+  if (lastAttackRound !== qn.round) { lastAttackRound = qn.round; audio.select(); }
+  const attack = qn.attack, remaining = attack.type === 'freeze' ? qn.frozenUntil - serverNow() : attack.type === 'fog' ? qn.fogUntil - serverNow() : 0;
+  notice.textContent = `${attack.by}: ${JOKER_INFO[attack.type][0]}! ${remaining > 0 ? `${Math.ceil(remaining / 1000)} sn · ` : ''}${attack.type === 'slow' ? 'Hız bonusun kapalı. Destek → Kalkan ile kurtul.' : attack.type === 'shuffle' ? 'Şıklar yer değiştirdi; seçimin korundu.' : remaining > 0 ? 'Destek → Kalkan ile kurtulabilirsin.' : 'Etki bitti. Bu soruda yeni saldırı alamazsın.'}`;
 }
 function showResult(result, qn) {
   const banner = $('result-banner');
@@ -262,9 +331,11 @@ function showResult(result, qn) {
   const big = el('span'), small = el('small');
   if (result.skip) { big.textContent = 'Sıradaki soru senin'; small.textContent = 'Köprüye hoş geldin.'; banner.className = 'result-banner show'; }
   else if (result.correct) {
+    if ([3, 5].includes(result.streak)) { $('fire-meter').classList.remove('flare'); requestAnimationFrame(() => $('fire-meter').classList.add('flare')); }
     big.textContent = `Doğru! +${result.points}`;
     const parts = [`${result.base} seri puanı`];
     if (result.speed) parts.push(`+${result.speed} hız`);
+    if (result.slowed) parts.push('Hız Kes: hız bonusu yok');
     if (result.mult > 1) parts.push(`x${result.mult}${qn.golden && result.double ? ' (altın + çifte ateş)' : qn.golden ? ' altın' : ' çifte ateş'}`);
     small.textContent = `${parts.join(' · ')}${result.streak >= 3 ? ` · ${result.streak} seri, ateş büyüyor` : ''}`;
     banner.className = 'result-banner show good'; audio.correct(result.streak);
@@ -278,7 +349,7 @@ function showResult(result, qn) {
   banner.replaceChildren(big, small);
   clearTimeout(showResult.timer); showResult.timer = setTimeout(() => banner.classList.remove('show'), 2600);
 }
-function hideBannerFor() { $('result-banner').classList.remove('show'); }
+function hideBannerFor() { const banner = $('result-banner'); banner.classList.remove('show'); if (banner.childNodes.length) banner.replaceChildren(); }
 function renderBoard() {
   $('board').replaceChildren(...state.players.map((p, i) => {
     const li = el('li'), who = el('span', 'who', p.name), recent = el('span', 'recent');
@@ -289,7 +360,19 @@ function renderBoard() {
     for (let k = 0; k < 10; k++) { const dot = el('i'), v = p.recent[p.recent.length - 10 + k]; if (v !== undefined) dot.className = v ? 'y' : 'n'; recent.append(dot); }
     li.append(el('span', 'rank', String(i + 1)), who, el('span', 'sc', p.score.toLocaleString('tr')), recent); return li;
   }));
+  const rank = state.players.findIndex(p => p.id === state.me) + 1, mine = me(), lead = state.players[0];
+  $('rank-open').replaceChildren(el('b', '', `${rank}/${state.players.length}`), el('small', '', rank === 1 ? 'Lidersin' : `Lidere ${Math.max(0, (lead?.score || 0) - (mine?.score || 0))} puan`));
+  $('mobile-board').replaceChildren(...state.players.map((p, i) => { const row = el('li', p.id === state.me ? 'me' : ''); row.append(el('span', '', `${i + 1}. ${p.name}${p.id === state.me ? ' (sen)' : ''}`), el('b', '', p.score.toLocaleString('tr'))); return row; }));
 }
+$('rank-open').addEventListener('click', () => $('rank-dialog').showModal());
+function setJokerTab(tab) {
+  jokerTab = tab; $('support-tab').setAttribute('aria-pressed', String(tab === 'support')); $('attack-tab').setAttribute('aria-pressed', String(tab === 'attack'));
+  $('freeze-menu').classList.add('hidden'); if (state?.question) renderJokers(state.question);
+}
+$('support-tab').addEventListener('click', () => setJokerTab('support'));
+$('attack-tab').addEventListener('click', () => setJokerTab('attack'));
+$('joker-guide').replaceChildren(...Object.values(JOKER_INFO).flatMap(([title, description]) => [el('dt', '', title), el('dd', '', description)]));
+$('joker-help').addEventListener('click', () => $('joker-dialog').showModal());
 function choose(id) {
   const qn = state?.question;
   if (state?.phase !== 'question' || !qn || qn.choice === id || me()?.waiting) return;
@@ -311,13 +394,14 @@ function useJoker(type, target) {
 }
 for (const button of $$('.joker')) button.addEventListener('click', () => {
   const type = button.dataset.joker;
-  if (type !== 'freeze') return useJoker(type);
+  if (!ATTACKS.includes(type)) return useJoker(type);
   const menu = $('freeze-menu');
   if (!menu.classList.contains('hidden')) { menu.classList.add('hidden'); return; }
-  const rivals = state.players.filter(p => p.id !== state.me && !p.waiting && !p.frozen);
-  menu.replaceChildren(el('p', '', rivals.length ? 'Kimin şıkları buz tutsun?' : 'Dondurulacak rakip yok.'), ...rivals.map(p => {
-    const b = el('button', '', p.name); b.type = 'button'; b.addEventListener('click', () => useJoker('freeze', p.id)); return b;
+  const rivals = state.players.filter(p => p.id !== state.me && !p.waiting && !p.attacked && !p.protected);
+  menu.replaceChildren(el('p', '', rivals.length ? `${JOKER_INFO[type][0]} · kimi seçiyorsun?` : 'Bu soruda hedef alınabilecek rakip yok.'), ...rivals.map(p => {
+    const b = el('button', '', p.name); b.type = 'button'; b.addEventListener('click', () => useJoker(type, p.id)); return b;
   }));
+  const cancel = el('button', '', 'Vazgeç'); cancel.type = 'button'; cancel.addEventListener('click', () => menu.classList.add('hidden')); menu.append(cancel);
   menu.classList.remove('hidden');
 });
 function startTimer() { if (!timer) timer = setInterval(updateTimer, 100); updateTimer(); }
@@ -337,10 +421,12 @@ function updateTimer() {
   fill.style.transform = `scaleX(${state.phase === 'question' ? Math.min(1, left / total) : 0})`;
   fill.parentElement.classList.toggle('urgent', state.phase === 'question' && left < 3500);
   const secs = Math.ceil(left / 1000);
+  $('timer-seconds').textContent = state.phase === 'question' ? `${secs} sn` : state.phase === 'reveal' ? 'Sonuç' : 'Hazırlan';
+  $('timer-seconds').classList.toggle('urgent', state.phase === 'question' && secs <= 3);
   if (state.phase === 'question' && secs <= 3 && secs > 0 && secs !== lastTick) { lastTick = secs; audio.tick(); }
   if (state.phase !== 'question') lastTick = -1;
   // Buz çözülünce ve akış öğeleri eskiyince yayını beklemeden güncelle.
-  if (state.phase === 'question' && state.question) { updateCards(state.question); renderFeed(); }
+  if (state.phase === 'question' && state.question) { updateCards(state.question); renderFeed(); renderJokers(state.question); renderAttackNotice(); }
 }
 addEventListener('keydown', event => {
   if (!state || state.phase !== 'question' || event.target.closest('input,textarea,select,dialog') || event.metaKey || event.ctrlKey || event.altKey) return;
@@ -363,15 +449,36 @@ $('menu-open').addEventListener('click', () => $('menu-dialog').showModal());
 for (const button of $$('[data-close]')) button.addEventListener('click', () => button.closest('dialog').close());
 $('motion').value = motion;
 $('motion').addEventListener('change', e => { motion = e.target.value; store.set('ates-motion', motion); scene?.setReducedMotion(motion === 'reduced'); });
-const qualityText = () => { $('quality').textContent = `Görüntü: ${quality === 'high' ? 'Yüksek' : 'Düşük'}`; };
+const qualityText = () => { $('quality').textContent = `Görüntü: ${quality === 'high' ? 'Yüksek' : 'Hafif'}`; $('menu-quality').value = quality; };
 qualityText();
 $('quality').addEventListener('click', () => { quality = quality === 'high' ? 'low' : 'high'; store.set('ates-quality', quality); scene?.setQuality(quality); qualityText(); });
+$('menu-quality').addEventListener('change', e => { quality = e.target.value; store.set('ates-quality', quality); scene?.setQuality(quality); qualityText(); });
 const soundText = () => { $('sound').textContent = audio.enabled ? 'Ses açık' : 'Ses kapalı'; $('sound').setAttribute('aria-pressed', String(audio.enabled)); };
 soundText();
 $('sound').addEventListener('click', () => { audio.enabled = !audio.enabled; store.set('ates-sound', audio.enabled ? '1' : '0'); soundText(); });
 
 // ---------- Soru seti yükleme ----------
-for (const button of $$('.open-sets')) button.addEventListener('click', () => $('sets-dialog').showModal());
+function showStep(step) {
+  if (uploading) return;
+  if (step === 3 && !pendingSet) return;
+  wizardStep = step;
+  for (const panel of $$('.set-step')) panel.classList.toggle('hidden', Number(panel.dataset.panel) !== step);
+  for (const button of $$('[data-step]')) { if (Number(button.dataset.step) === step) button.setAttribute('aria-current', 'step'); else button.removeAttribute('aria-current'); button.disabled = Number(button.dataset.step) === 3 && !pendingSet; }
+  $('wizard-back').classList.toggle('hidden', step === 1); $('prompt-next').classList.toggle('hidden', step !== 1);
+  $('check-set').classList.toggle('hidden', step !== 2); $('add-set').classList.toggle('hidden', step !== 3);
+  $('sets-dialog').scrollTop = 0;
+}
+for (const button of $$('[data-step]')) button.addEventListener('click', () => showStep(Number(button.dataset.step)));
+$('prompt-next').addEventListener('click', () => showStep(2));
+$('wizard-back').addEventListener('click', () => showStep(wizardStep - 1));
+function setDestination() {
+  $('set-destination').textContent = `${state && !['lobby', 'countdown'].includes(state.phase) ? 'Bu set sonraki maça eklenecek; mevcut maç devam ediyor.' : 'Bu set odanın soru havuzuna eklenecek.'} 3–80 soru; bütün setler puan kazandırır.`;
+}
+for (const button of $$('.open-sets')) button.addEventListener('click', () => {
+  if ($('menu-dialog').open) $('menu-dialog').close();
+  setDestination();
+  showStep(pendingSet ? 3 : 1); $('sets-dialog').showModal();
+});
 const promptText = () => buildPrompt({title: $('p-title').value || $('p-category').value, category: $('p-category').value, language: $('p-language').value, count: $('p-count').value, theme: $('p-theme').value});
 $('copy-prompt').addEventListener('click', async () => {
   const text = promptText(), fallback = $('prompt-fallback');
@@ -385,25 +492,31 @@ function errorList(title, errors = []) {
   return [el('b', '', title), list];
 }
 function checkSet() {
+  if (uploading) return;
   const result = parseSet($('set-json').value);
   pendingSet = result.set || null; $('add-set').disabled = !pendingSet || uploading;
-  if (result.errors) { feedback(errorList('Set eklenemedi. Şunları düzelt:', result.errors)); return; }
+  $('set-errors').replaceChildren();
+  if (result.errors) { $('set-errors').replaceChildren(...errorList('JSON okunamadı. Şunları düzelt:', result.errors)); showStep(2); return; }
   const s = summarizeSet(result.set), box = el('div', 'ok'), list = el('ol');
   list.append(...result.set.questions.slice(0, 3).map(q => el('li', '', `${q.text} (${q.options.length} şık)`)));
   box.append(el('b', '', s.title), el('span', '', `${s.category} · ${s.count} soru · 2 şıklı: ${s.counts[2]}, 3 şıklı: ${s.counts[3]}, 4 şıklı: ${s.counts[4]}`), list);
   feedback([box]);
+  showStep(3);
 }
 $('check-set').addEventListener('click', checkSet);
-$('set-json').addEventListener('input', () => { pendingSet = null; $('add-set').disabled = true; });
+$('set-json').addEventListener('input', () => { pendingSet = null; $('add-set').disabled = true; $$('[data-step="3"]')[0].disabled = true; $('set-errors').replaceChildren(); });
 $('set-json').addEventListener('paste', () => setTimeout(checkSet, 0)); // Yapıştırınca hemen kontrol et.
 $('add-set').addEventListener('click', async () => {
   if (!pendingSet || uploading || !state) return;
   uploading = true; $('add-set').disabled = true;
+  $('set-json').readOnly = true;
+  const uploadRoom = code;
   const parts = chunkText(JSON.stringify(pendingSet)), uploadId = Math.random().toString(36).slice(2, 12).padEnd(6, '0');
   const bar = el('div', 'progress'), fill = el('i'); bar.append(fill); $('set-feedback').append(bar);
   try {
     let result;
     for (let index = 0; index < parts.length; index++) {
+      if (closing || code !== uploadRoom) throw new Error('Oda değişti.');
       result = await socket.timeout(6000).emitWithAck('upload', {uploadId, index, total: parts.length, chunk: parts[index]});
       if (result?.error) break;
       fill.style.width = `${((index + 1) / parts.length) * 100}%`;
@@ -414,8 +527,8 @@ $('add-set').addEventListener('click', async () => {
       toast(result.nextGame ? `"${result.summary.title}" sonraki oyunun havuzuna eklendi.` : `"${result.summary.title}" havuza eklendi.`);
       $('set-json').value = ''; pendingSet = null; feedback([]); $('sets-dialog').close();
     }
-  } catch { feedback(errorList('Yükleme zaman aşımına uğradı. Tekrar dene.')); }
-  finally { uploading = false; $('add-set').disabled = !pendingSet; }
+  } catch { feedback(errorList('Yükleme tamamlanamadı. Aynı odada bağlantını kontrol edip tekrar dene.')); }
+  finally { uploading = false; $('set-json').readOnly = false; $('add-set').disabled = !pendingSet; }
 });
 
 // ---------- Yaşam döngüsü ----------

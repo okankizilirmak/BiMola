@@ -1,13 +1,14 @@
 import {randomInt} from 'node:crypto';
 
 // Platform state is separate from game state. Adapters see no sockets or other rooms.
-export function createRuntime(io, registry, {maxRooms = 64, logger = console} = {}) {
+export function createRuntime(io, registry, {maxRooms = 64, logger = console, scores} = {}) {
   if (!Number.isInteger(maxRooms) || maxRooms < 1 || maxRooms > 9000) throw new Error('maxRooms must be 1–9000');
   const rooms = new Map(), schedules = new Map();
   let timer = null, closed = false;
   const metrics = {ticks: 0, snapshots: 0, skippedSnapshots: 0, failedRooms: 0};
   const adapterFor = room => registry.adapter(room.gameId);
   const namespaceFor = room => io.of(registry.get(room.gameId).namespace);
+  const record = room => { const events = adapterFor(room).takeScores?.(room); if (events?.length) scores?.record(room.gameId, events); };
 
   function publish(room, reliable = true) {
     const adapter = adapterFor(room), namespace = namespaceFor(room), now = Date.now();
@@ -63,6 +64,7 @@ export function createRuntime(io, registry, {maxRooms = 64, logger = console} = 
         const dt = Math.min(.1, Math.max(0, (now - timing.tickAt) / 1000));
         timing.tickAt = now;
         const {events = [], changed = false} = adapter.tick(room, now, dt) || {};
+        record(room);
         metrics.ticks++;
         const namespace = namespaceFor(room);
         for (const event of events) {
@@ -115,7 +117,7 @@ export function createRuntime(io, registry, {maxRooms = 64, logger = console} = 
             room = /^\d{4}$/.test(code) ? rooms.get(code) : null;
             if (!room || room.gameId !== manifest.id) return ack({error: 'Bu oyun için oda bulunamadı. Kodu kontrol et.'});
             if (socket.data.code === code) return ack({code, id: socket.id, gameId: manifest.id});
-            const result = adapter.canJoin(room, data);
+            const result = adapter.canJoin(room, {...data, profileId: socket.data.profileId});
             if (result.error) return ack(result);
           } else {
             if (rooms.size >= maxRooms) return ack({error: 'Odalar şu an dolu. Biraz sonra tekrar dene.'});
@@ -127,7 +129,7 @@ export function createRuntime(io, registry, {maxRooms = 64, logger = console} = 
           leave(socket);
           if (created) rooms.set(room.code, room);
           const name = String(data.name || 'Misafir').trim().slice(0, 18) || 'Misafir';
-          const result = adapter.addPlayer(room, {id: socket.id, name, data});
+          const result = adapter.addPlayer(room, {id: socket.id, name, profileId: socket.data.profileId, data});
           socket.data.code = room.code;
           ack({...result, code: room.code, id: socket.id, gameId: manifest.id});
           publish(room); wake();
@@ -141,6 +143,7 @@ export function createRuntime(io, registry, {maxRooms = 64, logger = console} = 
           if (!room || room.gameId !== manifest.id) { ack?.({error: 'Oda bulunamadı.'}); return; }
           try {
             const result = command.handle(room, socket.id, args[0], Date.now());
+            record(room);
             ack?.(result);
             if (command.event && result) socket.emit(command.event, result);
             if (command.publish && !result?.error) { publish(room); wake(); }

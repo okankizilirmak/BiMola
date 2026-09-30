@@ -28,7 +28,7 @@
 
 <main id="home" class="panel-screen">
   <section class="hero">
-    <p class="eyebrow">BİLGİ YARIŞMASI · SONSUZ KÖPRÜ</p>
+    <p class="eyebrow">BİLGİ YARIŞMASI · BİRAZ DA ÇAKALLIK</p>
     <h1>Doğru tarafa<br><em>koş.</em></h1>
     <p class="lead">Herkes aynı soruyu görür ama şıklar herkeste başka yerde. Doğru bilen bir adım ilerler, yanlış bilene kütük çarpar ve bir adım geri savrulur.</p>
     <label class="field"><span>OYUNDAKİ ADIN</span><input id="name" maxlength="18" autocomplete="nickname" placeholder="Adın"></label>
@@ -47,8 +47,13 @@
         <li>Herkes <b>hazır</b> deyince köprü açılır. Her soru için <b>12 saniye</b> var; ne kadar hızlıysan o kadar çok hız bonusu.</li>
         <li>Kimse kimsenin seçimini göremez; şıkların yeri herkeste farklı.</li>
         <li>Art arda doğru bildikçe ateş büyür: <b>100 → 125 → 150 → 175 → 200</b> puan.</li>
-        <li>Yanlış cevap seriyi sıfırlar, bir adım geri atar. Her oyunda birer <b>joker</b>: x2, 50/50, Kalkan, Dondur.</li>
+        <li>Yanlış cevap seriyi sıfırlar, puanın kalır. <b>Kalkan</b> seni korur; <b>Dondur, Karıştır, Sis ve Hız Kes</b> rakibe takılır. Her joker maçta bir kez.</li>
+        <li>Havuzdaki sorular bitince podyuma çıkılır. Yeni setle aynı odada yeniden oynayabilirsiniz.</li>
       </ol>
+    </section>
+    <section class="card personal-records">
+      <div class="card-head"><h2>Senin ateş defterin</h2><button id="alltime-open" class="ghost" type="button">Tüm zamanlar ↗</button></div>
+      <div id="home-records" class="record-grid"></div><p id="records-note" class="muted small" role="status">Puan defteri açılıyor…</p>
     </section>
   </aside>
 </main>
@@ -64,6 +69,7 @@
       <div id="podium-stage" class="podium-stage"></div>
       <div id="awards" class="awards"></div>
       <ol id="ranking" class="ranking"></ol>
+      <div id="match-records" class="record-grid"></div><p id="match-record-note" class="muted small" role="status"></p>
     </section>
     <div class="room-grid">
       <section><h3>Oyuncular <span id="player-count" class="count"></span></h3><div id="lobby-players" class="player-list"></div></section>
@@ -83,25 +89,30 @@
 
 <section id="hud" class="hidden">
   <div class="hud-top">
-    <div class="me-card"><small>PUANIN</small><b id="my-score">0</b><span id="my-streak" class="streak"></span></div>
+    <div class="me-card"><div class="score-line"><small>PUANIN</small><b id="my-score">0</b><span id="my-streak" class="streak"></span></div><div id="fire-meter" class="fire-meter" aria-label="Ateş seviyesi"></div><small id="next-points" class="next-points">Sonraki doğru: 100 puan</small></div>
     <div id="question-card" class="question-card">
       <div class="q-meta"><span id="q-round"></span><span id="q-golden" class="golden-badge hidden">ALTIN SORU · x2</span><span id="q-set"></span></div>
       <h2 id="q-text"></h2>
-      <div class="timer" aria-hidden="true"><i id="timer-fill"></i></div>
+      <div class="timer-row"><div class="timer" aria-hidden="true"><i id="timer-fill"></i></div><span id="timer-seconds" class="timer-seconds" role="timer" aria-label="Kalan süre">12 sn</span></div>
       <p id="q-status" class="q-status" role="status" aria-live="polite"></p>
     </div>
-    <div class="hud-buttons"><button class="glass open-sets" type="button">Set ekle ＋</button><button id="menu-open" class="glass" type="button">Menü</button></div>
+    <div class="hud-buttons"><button id="rank-open" class="glass rank-chip" type="button" aria-haspopup="dialog">Sıralama</button><button id="menu-open" class="glass" type="button">Menü</button></div>
   </div>
   <div id="feed" class="feed" aria-live="polite"></div>
   <aside class="board" aria-label="Sıralama"><div class="board-head"><h3>Sıralama</h3><small>SON 10</small></div><ol id="board"></ol></aside>
   <div id="result-banner" class="result-banner" role="status"></div>
+  <div id="attack-notice" class="attack-notice hidden" role="status"></div>
   <div class="play-area">
+    <div class="joker-tabs" role="group" aria-label="Joker türü"><button id="support-tab" type="button" aria-pressed="true">Destek <span id="support-left">3</span></button><button id="attack-tab" type="button" aria-pressed="false">Çakallık <span id="attack-left">4</span></button><button id="joker-help" type="button" aria-label="Jokerler nasıl çalışır?">?</button></div>
     <div id="jokers" class="jokers" role="group" aria-label="Jokerler">
       <button type="button" class="joker" data-joker="double" title="Bu soruda puanın ikiye katlanır"><b>x2</b><span>Çifte Ateş</span></button>
       <button type="button" class="joker" data-joker="half" title="Yanlış şıkların yarısı silinir (3+ şıklı sorularda)"><b>50/50</b><span>Yarı yarıya</span></button>
-      <button type="button" class="joker" data-joker="shield" title="Yanlış bilirsen geri düşmezsin, serin korunur"><b>⛨</b><span>Kalkan</span></button>
-      <button type="button" class="joker" data-joker="freeze" title="Bir rakibin şıkları 4 saniye buz tutar"><b>❄</b><span>Dondur</span></button>
-      <div id="freeze-menu" class="freeze-menu hidden" role="menu" aria-label="Kimi donduracaksın?"></div>
+      <button type="button" class="joker" data-joker="shield" title="Bu soruda kütükten ve çakallıklardan korur; buz ve sisi temizler"><b>⛨</b><span>Kalkan</span></button>
+      <button type="button" class="joker hidden" data-joker="freeze" title="Rakibin şıklarını en fazla 4 saniye dondurur"><b>❄</b><span>Dondur</span></button>
+      <button type="button" class="joker hidden" data-joker="shuffle" title="Rakibin şıklarını karıştırır; seçtiği cevap korunur"><b>⇄</b><span>Karıştır</span></button>
+      <button type="button" class="joker hidden" data-joker="fog" title="Rakibin sorusunu en fazla 2,5 saniye sisle örter"><b>≋</b><span>Sis</span></button>
+      <button type="button" class="joker hidden" data-joker="slow" title="Rakibin bu sorudaki hız bonusunu kaldırır; doğru cevap puanı kalır"><b>↘</b><span>Hız Kes</span></button>
+      <div id="freeze-menu" class="freeze-menu hidden" role="group" aria-label="Rakip seç"></div>
     </div>
     <div id="answers" class="answers" role="group" aria-label="Cevap seçenekleri"></div>
   </div>
@@ -114,6 +125,8 @@
   <p class="muted">Menü açıkken de sorular geliyor; cevap vermezsen boş sayılır.</p>
   <div class="invite"><small>DAVET KODU</small><button class="code-chip copy-invite" type="button"></button></div>
   <label class="field"><span>HAREKET</span><select id="motion"><option value="full">Tam animasyon</option><option value="reduced">Azaltılmış hareket</option></select></label>
+  <label class="field"><span>GÖRÜNTÜ</span><select id="menu-quality"><option value="low">Hafif · daha az pil</option><option value="high">Yüksek</option></select></label>
+  <button class="secondary open-sets" type="button">Sonraki maç için soru ekle</button>
   <button class="primary" type="button" data-close>Oyuna dön <span aria-hidden="true">→</span></button>
   <button class="ghost leave" type="button">Odadan ayrıl</button>
 </dialog>
@@ -121,9 +134,10 @@
 <dialog id="sets-dialog" class="wide">
   <button class="close" type="button" data-close aria-label="Kapat">×</button>
   <p class="eyebrow">KENDİ SORULARIN</p><h2>Soru seti ekle.</h2>
-  <p class="muted">AI promptunu kopyala, istediğin AI aracına yapıştır ve dönen JSON'u aşağıya koy. Kendin hazırladığın JSON'u da yapıştırabilirsin. Setin odanın havuzuna girer. Herkes hazır olunca havuzdaki tüm sorular karışık oynanır; oyun sürerken eklersen sonraki oyuna kalır. 3–80 soru olabilir.</p>
+  <p id="set-destination" class="muted small">3–80 soru. Seti herkes ekleyebilir; havuzdaki sorular bitince maç biter.</p>
+  <nav class="wizard-nav" aria-label="Soru seti adımları"><button type="button" data-step="1" aria-current="step">1 · Prompt</button><button type="button" data-step="2">2 · Yapıştır</button><button type="button" data-step="3" disabled>3 · Önizle</button></nav>
   <div class="steps">
-    <section>
+    <section class="set-step" data-panel="1">
       <h3><span>1</span> Promptu hazırla</h3>
       <div class="form-grid">
         <label class="field"><span>BAŞLIK</span><input id="p-title" maxlength="60" placeholder="Ör. Bilim Tarihi"></label>
@@ -135,14 +149,21 @@
       <button id="copy-prompt" class="secondary" type="button">AI promptunu kopyala <span aria-hidden="true">⧉</span></button>
       <textarea id="prompt-fallback" class="hidden" readonly rows="6" aria-label="AI promptu"></textarea>
     </section>
-    <section>
+    <section class="set-step hidden" data-panel="2">
       <h3><span>2</span> JSON'u yapıştır</h3>
       <textarea id="set-json" rows="10" spellcheck="false" placeholder='{"schemaVersion": 1, "title": "…", "questions": [ … ]}' aria-label="Soru seti JSON"></textarea>
-      <div class="row"><button id="check-set" class="secondary" type="button">Kontrol et</button><button id="add-set" class="primary" type="button" disabled>Sete ekle <span aria-hidden="true">→</span></button></div>
+      <p class="muted small">AI’dan gelen yanıtı buraya yapıştır. JSON’un başında veya sonunda açıklama olsa da okuyabiliriz.</p><div id="set-errors" class="feedback" role="alert"></div>
+    </section>
+    <section class="set-step hidden" data-panel="3"><h3><span>3</span> Önizle ve ekle</h3>
       <div id="set-feedback" class="feedback" role="status" aria-live="polite"></div>
     </section>
   </div>
+  <div class="wizard-footer"><button id="wizard-back" class="ghost hidden" type="button">← Geri</button><button id="prompt-next" class="primary" type="button">JSON’u yapıştır →</button><button id="check-set" class="primary hidden" type="button">Önizle →</button><button id="add-set" class="primary hidden" type="button" disabled>Havuza ekle →</button></div>
 </dialog>
+
+<dialog id="rank-dialog"><button class="close" type="button" data-close aria-label="Kapat">×</button><p class="eyebrow">KÖPRÜDE KİM ÖNDE?</p><h2>Canlı sıralama</h2><ol id="mobile-board" class="mobile-board"></ol><button class="primary" type="button" data-close>Oyuna dön</button></dialog>
+<dialog id="joker-dialog"><button class="close" type="button" data-close aria-label="Kapat">×</button><p class="eyebrow">CEBİNDEKİ NUMARALAR</p><h2>Biraz destek, biraz çakallık.</h2><dl id="joker-guide"></dl><p class="muted small">Her joker maçta bir kez. Bir soruda bir saldırı yapabilirsin; bir oyuncuya da yalnızca bir saldırı gelebilir. Son 2 saniyede saldırı yok. Kalkan saldırıları engeller, buz ve sisi temizler. Karıştır seçilmiş cevabı değiştirmez.</p><button class="primary" type="button" data-close>Anladım</button></dialog>
+<dialog id="alltime-dialog"><button class="close" type="button" data-close aria-label="Kapat">×</button><p class="eyebrow">ATEŞ DEFTERİ</p><h2>Tüm zamanlar</h2><p class="muted small">Bütün soru setleri puan kazandırır. Sıralama biriken toplam puana göre.</p><ol id="alltime-board" class="mobile-board"></ol><p id="alltime-note" class="muted small" role="status"></p><button class="primary" type="button" data-close>Köprüye dön</button></dialog>
 
 <div id="toast" role="status"></div>
 <script src="/socket.io/socket.io.js"></script>

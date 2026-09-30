@@ -7,10 +7,13 @@ import {createRegistry} from '../server/platform/registry.js';
 import {games} from '../server/games/registry.js';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-function event(socket, name) {
+function event(socket, name, match = () => true) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => { socket.off(name, receive); reject(new Error(`Timed out: ${name}`)); }, 3000);
-    function receive(data) { clearTimeout(timer); resolve(data); }
+    function receive(data) {
+      if (!match(data)) return socket.once(name, receive);
+      clearTimeout(timer); resolve(data);
+    }
     socket.once(name, receive);
   });
 }
@@ -143,7 +146,7 @@ test('real-time room broadcasts are bounded and a stopped voting clock still pub
   assert.ok(g.metrics.snapshots > before); assert.ok(g.metrics.snapshots - before <= 6);
   const room = g.rooms.get(made.code);
   room.phase = 'end'; room.vote = {options: ['market', 'greenhouse'], until: Date.now(), votes: {}, closed: false, winner: null};
-  const result = await event(socket, 'state');
+  const result = await event(socket, 'state', packet => packet.vote?.closed === true);
   assert.equal(result.vote.closed, true);
   const snapshots = g.metrics.snapshots; await delay(100);
   assert.equal(g.metrics.snapshots, snapshots, 'closed vote has no periodic work');

@@ -21,7 +21,7 @@ export function parseSet(raw) {
   if (!source) return {errors: ['JSON alanı boş. AI çıktısını buraya yapıştır.']};
   if (new TextEncoder().encode(source).length > LIMITS.bytes) return {errors: [`Set çok büyük. En fazla ${LIMITS.bytes / 1024} KB olabilir.`]};
   let data;
-  try { data = JSON.parse(source); } catch (error) { return {errors: [`Geçerli JSON değil: ${error.message}`]}; }
+  try { data = JSON.parse(source); } catch { return {errors: ['Geçerli JSON değil: yanıt eksik veya işaretleri hatalı. AI yanıtının tamamını kopyalayıp yeniden yapıştır.']}; }
   return validateSet(data);
 }
 

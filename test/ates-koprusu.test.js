@@ -168,8 +168,9 @@ test('a result is written once; late answers and last-second joiners are handled
 });
 
 test('jokers: x2 doubles, shield blocks the log, 50/50 removes wrong options, each once per game', () => {
-  const r = room(['a', 'b']); const start = begin(r);
-  while (r.current.tokens.length < 4) next(r);
+  const r = room(['a', 'b']); begin(r);
+  while (r.current.tokens.length < 4) { finish(r); next(r); }
+  const start = r.current.startedAt;
   assert.ok(useJoker(r, 'a', {type: 'double'}, start).ok);
   assert.ok(useJoker(r, 'a', {type: 'double'}, start).error, 'no double use in one question');
   assert.ok(useJoker(r, 'b', {type: 'shield'}, start).ok);
@@ -199,6 +200,9 @@ test('freeze hides the rival options for 4 seconds, then they can answer; target
   assert.ok(view(r, 'a', start + 100).players.find(p => p.id === 'b').frozen, 'others see the ice');
   assert.ok(answer(r, 'b', r.current.orders.b[0], start + 1000).error);
   assert.ok(view(r, 'b', start + TIMING.freeze + 1).question.options.every(o => o.text), 'thawed');
+  assert.equal(tick(r, start + TIMING.freeze + 1), true, 'expiry immediately requests a new snapshot');
+  assert.equal(r.phase, 'question');
+  assert.equal(tick(r, start + TIMING.freeze + 2), false, 'expiry is published once');
   assert.ok(answer(r, 'b', r.current.orders.b[0], start + TIMING.freeze + 1).ok);
   assert.ok(r.feed.some(f => f.kind === 'freeze'));
 });
@@ -208,6 +212,57 @@ test('golden questions appear and the final question is always golden', () => {
   const golden = [];
   for (let i = 0; i < 12; i++) { golden.push(r.current.golden); answer(r, 'a', correctFor(r), r.current.startedAt); finish(r); if (r.current.golden) assert.equal(r.current.results.a.mult, 2); if (i < 11) next(r); }
   assert.equal(golden.at(-1), true); assert.ok(golden.slice(0, -1).some(Boolean)); assert.ok(golden.filter(Boolean).length <= 4);
+});
+
+test('sabotage: shuffle preserves an answer and its speed timestamp, fog hides only the victim question', () => {
+  const r = room(['a', 'b', 'c']); const start = begin(r);
+  assert.ok(useJoker(r, 'a', {type: ['shuffle'], target: 'b'}, start).error, 'malformed joker type is rejected');
+  answer(r, 'b', correctFor(r), start + 300);
+  const order = [...r.current.orders.b], time = r.current.answeredAt.b;
+  assert.ok(useJoker(r, 'a', {type: 'shuffle', target: 'b'}, start + 500).ok);
+  assert.notDeepEqual(r.current.orders.b, order);
+  assert.deepEqual(new Set(r.current.orders.b), new Set(order));
+  assert.equal(r.current.choices.b, correctFor(r)); assert.equal(r.current.answeredAt.b, time);
+  assert.ok(useJoker(r, 'c', {type: 'fog', target: 'b'}, start + 600).error, 'target protected from piling on');
+  assert.equal(r.players.c.jokers.fog, 1, 'rejected attack spends no charge');
+  assert.ok(useJoker(r, 'a', {type: 'slow', target: 'c'}, start + 700).error, 'one outgoing attack per round');
+  assert.ok(useJoker(r, 'c', {type: 'fog', target: 'a'}, start + 700).ok);
+  assert.equal(view(r, 'a', start + 800).question.text, null);
+  assert.ok(view(r, 'a', start + 800).question.options.every(o => o.text));
+  assert.ok(view(r, 'b', start + 800).question.text);
+  assert.ok(view(r, 'a', start + 700 + TIMING.fog + 1).question.text, 'fog ends without changing the deadline');
+  finish(r); assert.ok(r.current.results.b.correct); assert.equal(r.current.results.b.lane, r.current.orders.b.indexOf(correctFor(r)));
+  next(r); assert.ok(useJoker(r, 'a', {type: 'shuffle', target: 'b'}, r.current.startedAt).error, 'once per game');
+});
+
+test('sabotage: slow removes only speed; shield clears attacks and protects against new attacks', () => {
+  const r = room(['a', 'b', 'c']); const start = begin(r);
+  assert.ok(useJoker(r, 'a', {type: 'slow', target: 'b'}, start + 100).ok);
+  answer(r, 'b', correctFor(r), start + 200); finish(r);
+  assert.equal(r.current.results.b.speed, 0); assert.equal(r.current.results.b.base, 100);
+  assert.equal(r.players.b.streak, 1); assert.equal(r.current.results.b.slowed, true);
+  next(r); const now = r.current.startedAt;
+  assert.ok(useJoker(r, 'a', {type: 'freeze', target: 'b'}, now).ok);
+  assert.ok(answer(r, 'b', correctFor(r), now + 100).error);
+  assert.ok(useJoker(r, 'b', {type: 'shield'}, now + 200).ok);
+  assert.ok(answer(r, 'b', correctFor(r), now + 300).ok, 'shield frees a frozen player');
+  assert.ok(useJoker(r, 'c', {type: 'fog', target: 'b'}, now + 400).error);
+  assert.equal(r.players.c.jokers.fog, 1);
+  next(r); const late = r.until - 1500;
+  assert.ok(useJoker(r, 'c', {type: 'fog', target: 'b'}, late).error, 'no last-second attack');
+  assert.equal(r.players.c.jokers.fog, 1);
+});
+
+test('scores: round events are server-authored, emitted once and completion is separate', () => {
+  const r = createRoom({code: '1000', host: 'a'}); addPlayer(r, {id: 'a', name: 'Ada', profileId: 'trusted'});
+  send(r, 'a', sampleSet(3)); begin(r);
+  for (let i = 0; i < 3; i++) { answer(r, 'a', correctFor(r), r.current.startedAt); finish(r); if (i < 2) next(r); }
+  const events = adapter.takeScores(r); assert.equal(events.length, 3);
+  assert.equal(events.reduce((sum, e) => sum + e.points, 0), r.players.a.score);
+  assert.ok(events.every(e => e.profileId === 'trusted' && e.matchId === r.matchId));
+  assert.deepEqual(adapter.takeScores(r), []);
+  next(r); assert.equal(adapter.takeScores(r)[0].completed, true);
+  assert.ok(adapter.canJoin(r, {profileId: 'trusted'}).error, 'same identity cannot enter twice');
 });
 
 test('adapter contract: capacity, summary, idle rooms do not tick', () => {

@@ -5,3 +5,8 @@ services:
       - "3000:3000"
     restart: unless-stopped
     init: true
+    volumes:
+      - bimola-scores:/app/data
+
+volumes:
+  bimola-scores:

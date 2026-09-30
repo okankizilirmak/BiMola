@@ -6,7 +6,11 @@ export const adapter = {
   snapshotInterval: 1000,
   create: ({code, host}) => createRoom({code, host}),
   members,
-  canJoin: room => members(room).length >= MAX_PLAYERS ? {error: `Oda dolu (${MAX_PLAYERS} kişi).`} : {ok: true},
+  canJoin(room, data = {}) {
+    if (data.profileId && members(room).some(p => p.profileId === data.profileId)) return {error: 'Bu köprüde başka bir sekmede zaten varsın.'};
+    return members(room).length >= MAX_PLAYERS ? {error: `Oda dolu (${MAX_PLAYERS} kişi).`} : {ok: true};
+  },
+  takeScores: room => room.scoreEvents.splice(0),
   addPlayer(room, player) { const p = addPlayer(room, player); return {waiting: !!p.skipRound}; },
   removePlayer: (room, id) => removePlayer(room, id),
   summary(room) {

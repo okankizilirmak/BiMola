@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {player,start,tick,view,sanitizeSettings,defaultSettings} from '../game.js';
-import {DRIP_STEP,DRIP_MS,BURST_MS,effectLife,effectFade,privateTrace} from '../public/effects.js';
+import {player,start,tick,view,sanitizeSettings,defaultSettings} from '../server/games/prop-hunt/game.js';
+import {DRIP_STEP,DRIP_MS,BURST_MS,effectLife,effectFade,privateTrace} from '../public/games/prop-hunt/effects.js';
 
 function room(opts={}){
  const r={code:'T',host:'a',phase:'lobby',

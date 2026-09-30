@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import {io as client} from 'socket.io-client';
 import {createGameServer} from '../server.js';
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
-const wait=(s,event)=>new Promise(resolve=>s.once(event,resolve));
+const wait=(s,event)=>new Promise((resolve,reject)=>{const timeout=setTimeout(()=>{s.off(event,receive);reject(new Error('Timed out: '+event));},4000);function receive(value){clearTimeout(timeout);resolve(value);}s.once(event,receive);});
 const waitFor=(s,event,match,limit=40)=>new Promise((resolve,reject)=>{let seen=0;const step=packet=>{if(match(packet))return resolve(packet);if(++seen>=limit)return reject(new Error(`${event}: beklenen paket ${limit} yayında gelmedi`));s.once(event,step);};s.once(event,step);});
 async function setup(){const g=createGameServer();try{await new Promise((resolve,reject)=>{g.http.once('error',reject);g.http.listen(0,'127.0.0.1',resolve);});return {g,url:'http://127.0.0.1:'+g.http.address().port};}catch(error){g.close();throw error;}}
-async function connect(url){const s=client(url,{transports:['websocket']});await wait(s,'connect');return s;}
+async function connect(url){const s=client(url+'/games/prop-hunt',{transports:['websocket']});await wait(s,'connect');return s;}
 test('two clients: configurable lobby, permissions, chosen props, water shots, host transfer and cleanup',{timeout:12000},async()=>{
  const {g,url}=await setup();let a,b;
  try{
@@ -26,7 +26,7 @@ test('two clients: configurable lobby, permissions, chosen props, water shots, h
   const hitPromise=wait(a,'hit');a.emit('input',{x:0,z:0,yaw:0,pitch:Math.atan2(.28-1.62,3),fire:true});const hit=await hitPromise;assert.equal(hit.found,false);assert.equal(hit.wet,34,'üç isabetlik varsayılanda her atış yüzde otuz dört doldurur');assert.equal(p.status,'alive');
   a.emit('input',{x:0,z:0,yaw:0,pitch:0,fire:false});const live=await wait(a,'state');assert.ok(live.shots.length);assert.equal(live.players.find(q=>q.id===b.id).x,undefined);assert.ok(live.objects.every(o=>!('owner'in o)));assert.ok(h.ammo<100);
   a.disconnect();await delay(120);assert.equal(r.host,b.id);assert.equal(r.phase,'end');assert.equal(r.winner,'hider');
-  assert.equal((await fetch(url+'/health')).status,200);assert.equal((await fetch(url+'/scene.js')).status,200);assert.equal((await fetch(url+'/vendor/three.module.js')).status,200);
+  assert.equal((await fetch(url+'/health')).status,200);assert.equal((await fetch(url+'/games/prop-hunt/scene.js')).status,200);assert.equal((await fetch(url+'/vendor/three.module.js')).status,200);
   b.disconnect();await delay(100);assert.equal(g.rooms.size,0);
  }finally{a?.disconnect();b?.disconnect();g.close();}
 });
@@ -36,8 +36,8 @@ test('practice brief has no timer until ready and six versus six has visible rep
   a=await connect(url);b=await connect(url);
   const first=await a.emitWithAck('join',{name:'Ada',role:'hider',settings:{teamSize:6,botMode:'fill'}});const r=g.rooms.get(first.code);assert.equal(Object.keys(r.players).length,12);assert.equal(Object.values(r.players).filter(p=>p.bot).length,11);
   await b.emitWithAck('join',{name:'Bora',role:'hunter',code:first.code});assert.equal(Object.keys(r.players).length,12);assert.equal(Object.values(r.players).filter(p=>p.bot).length,10);assert.equal(r.players[b.id].team,'hunter');
-  assert.ok((await a.emitWithAck('move-team',{playerId:b.id,team:'hider'})).ok);assert.equal(r.players[b.id].team,'hider');assert.ok((await b.emitWithAck('move-team',{playerId:a.id,team:'hunter'})).error);
-  const packet=await wait(a,'state');assert.equal(packet.settings.teamSize,6);assert.equal(packet.players.filter(p=>p.team==='hider').length,6);assert.equal(packet.players.filter(p=>p.team==='hunter').length,6);
+  const moved=wait(a,'state');assert.ok((await a.emitWithAck('move-team',{playerId:b.id,team:'hider'})).ok);assert.equal(r.players[b.id].team,'hider');assert.ok((await b.emitWithAck('move-team',{playerId:a.id,team:'hunter'})).error);
+  const packet=await moved;assert.equal(packet.settings.teamSize,6);assert.equal(packet.players.filter(p=>p.team==='hider').length,6);assert.equal(packet.players.filter(p=>p.team==='hunter').length,6);
   await delay(400);const practice=await a.emitWithAck('join',{name:'Ada',practice:true,role:'hunter'});const pr=g.rooms.get(practice.code);assert.equal(pr.phase,'brief');assert.equal(pr.until,0);await delay(100);assert.equal(pr.phase,'brief');assert.ok((await a.emitWithAck('ready')).ok);assert.equal(pr.phase,'prep');assert.ok(pr.until>Date.now());
  }finally{a?.disconnect();b?.disconnect();g.close();}
 });
@@ -50,7 +50,7 @@ test('different map rooms keep their own packets and serve all map assets',{time
   const second=await b.emitWithAck('join',{name:'Sera',practice:true,settings:{mapId:'greenhouse'}});
   const [sa,sb]=await Promise.all([pa,pb]);assert.equal(sa.settings.mapId,'market');assert.equal(sb.settings.mapId,'greenhouse');assert.notEqual(first.code,second.code);
   assert.ok(sa.objects.some(o=>o.type==='marketStall'));assert.ok(sb.objects.some(o=>o.type==='planterBox'));assert.ok(!sb.objects.some(o=>o.type==='marketStall'));
-  for(const path of ['/maps.js','/map-models.js','/maps/references/market.jpeg','/maps/references/greenhouse.jpeg','/maps/references/arcade.jpeg','/maps/references/museum.jpeg','/maps/references/hotel.jpeg','/maps/references/loft.jpeg']){const response=await fetch(url+path,{method:'HEAD'});assert.equal(response.status,200,path);}
+  for(const path of ['/games/prop-hunt/maps.js','/games/prop-hunt/map-models.js','/games/prop-hunt/maps/references/market.jpeg','/games/prop-hunt/maps/references/greenhouse.jpeg','/games/prop-hunt/maps/references/arcade.jpeg','/games/prop-hunt/maps/references/museum.jpeg','/games/prop-hunt/maps/references/hotel.jpeg','/games/prop-hunt/maps/references/loft.jpeg']){const response=await fetch(url+path,{method:'HEAD'});assert.equal(response.status,200,path);}
  }finally{a?.disconnect();b?.disconnect();g.close();}
 });
 test('active rooms are listed and a mid-round joiner waits for the next round',{timeout:12000},async()=>{

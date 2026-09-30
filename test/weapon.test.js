@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {weaponPose} from '../public/weapon.js';
-import {player,shoot,tick,sanitizeSettings} from '../game.js';
+import {weaponPose} from '../public/games/prop-hunt/weapon.js';
+import {player,shoot,tick,sanitizeSettings} from '../server/games/prop-hunt/game.js';
 const room=()=>({phase:'play',until:999999,settings:sanitizeSettings({botMode:'off'}),players:{a:player('a','Avcı',false,'hunter'),b:player('b','Saklanan',false,'hider')},objects:[],shots:[],effects:[],events:[],results:[]});
 test('water starts at the barrel below and to the side of the eyes and converges on the reticle',()=>{
  const r=room(),p=r.players.a;Object.assign(p,{x:0,y:0,z:7,yaw:0,pitch:0});r.objects=[{id:'target',mapId:'market',type:'washer',x:0,y:.8,z:3,angle:0,wet:0}];

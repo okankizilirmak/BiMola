@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {moveSpectator} from '../public/spectator.js';
-import {ROOM} from '../public/world.js';
-import {player,start,tick,action,view,sanitizeSettings} from '../game.js';
+import {moveSpectator} from '../public/games/prop-hunt/spectator.js';
+import {ROOM} from '../public/games/prop-hunt/world.js';
+import {player,start,tick,action,view,sanitizeSettings} from '../server/games/prop-hunt/game.js';
 test('free camera follows yaw, normalizes diagonals, supports vertical flight and stays inside the room',()=>{
  const p={x:0,y:2,z:0},distance=q=>Math.hypot(q.x-p.x,q.y-p.y,q.z-p.z);
  const forward=moveSpectator(p,0,{w:true},.05,ROOM),diagonal=moveSpectator(p,0,{w:true,d:true,' ':true},.05,ROOM);

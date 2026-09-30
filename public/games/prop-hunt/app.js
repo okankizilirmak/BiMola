@@ -1,13 +1,16 @@
+import {readName, saveName} from '../../platform/profile.js';
 import {MAP_CHOICES} from './maps.js';
 import {SKINS,DEFAULT_SKIN,skinFor} from './skins.js';
 import {createScene} from './scene.js';
 import {createAudio} from './audio.js';
 import {propTypes} from './world.js';
-const $=id=>document.getElementById(id),socket=io(),audio=createAudio();let world;
+const $=id=>document.getElementById(id),socket=io('/games/prop-hunt'),audio=createAudio();let world,pageClosing=false;
 document.body.insertAdjacentHTML('beforeend','<dialog id="waiting-dialog"><div class="eyebrow">SONRAKİ TUR SIRASINDASIN</div><h2>Bu tur bitsin,<br>sen de oyundasın.</h2><p class="muted" id="waiting-note"></p><b class="waiting-code" id="waiting-code"></b><div class="waiting-list" id="waiting-list"></div><div id="waiting-vote" class="vote-box hidden"></div><button class="secondary exit">Odadan ayrıl</button></dialog>');
 // Connection status must reflect the socket regardless of whether the 3D scene can start,
 // so a WebGL failure never leaves the header stuck on "Bağlanıyor" with no explanation.
 socket.on('connect',()=>{$('connection').innerHTML='<i></i> Çevrimiçi';refreshRooms();});
+socket.on('disconnect',()=>{if(pageClosing)return;if(state)leave();$('connection').textContent='Bağlantı kesildi';$('error').textContent='Bağlantın kesildi. Yeniden bağlandıktan sonra odaya tekrar katılabilirsin.';});
+socket.on('room-error',({error})=>{leave();$('error').textContent=error;});
 socket.on('connect_error',error=>{$('connection').textContent='Sunucuya bağlanılamadı';console.error('socket connect_error:',error.message);});
 try{world=createScene($('scene'));}catch(error){$('fatal').classList.remove('hidden');$('fatal').textContent='3D oda açılamadı. WebGL destekli güncel bir tarayıcıda donanım hızlandırmasını açıp tekrar dene.';console.error('createScene failed:',error);throw error;}
 const defaults={mapId:'loft',mapRotate:true,mapVote:60,teamSize:3,botMode:'fill',hunterBots:3,hiderBots:2,hideSeconds:20,roundSeconds:180,teamSelection:'choose',swapTeams:true,objectCount:10,decor:.25,idleReveal:30,waterTrail:true,smashHits:50,revealHits:3,escapeBoost:1.1};
@@ -64,7 +67,7 @@ $('sound').onclick=$('pause-sound').onclick=toggleSound;
 $('help').onclick=()=>showDialog('guide');
 for(const b of document.querySelectorAll('[data-close]'))b.onclick=()=>$(b.dataset.close).close();
 for(const d of document.querySelectorAll('dialog'))d.addEventListener('close',stopInput);
-try{$('name').value=localStorage.getItem('mola-name')||'Misafir';}catch{}
+try{$('name').value=readName()||'Misafir';}catch{}
 function chooseRole(role){selectedRole=role;document.querySelectorAll('[data-role]').forEach(b=>{const yes=b.dataset.role===role;b.classList.toggle('selected',yes);b.setAttribute('aria-pressed',yes);});}
 for(const b of document.querySelectorAll('[data-role]'))b.onclick=()=>chooseRole(b.dataset.role);
 function openPlay(newMode){mode=newMode;ensureSkinGrid();$('quick-map-field').classList.toggle('hidden',mode!=='quick');paintMapGrid('quick-map-grid',quickMap);$('play-error').textContent='';$('join-code-field').classList.toggle('hidden',mode!=='join');$('play-description').textContent=mode==='quick'?"3'e 3 hızlı oyun. Eksik yerleri botlar tamamlar.":mode==='create'?`${draft.teamSize}'e ${draft.teamSize} oda. Takımını seç, arkadaşlarını çağır.`:'Arkadaşının kodunu yaz ve takımını seç.';$('play-title').textContent=mode==='join'?'Arkadaşlarının yanına gel.':'Bugün kim olacaksın?';$('confirm-play').textContent=mode==='quick'?'Hızlı oyuna başla →':mode==='create'?'Odayı oluştur →':'Odaya katıl →';showDialog('play-dialog');}
@@ -120,13 +123,13 @@ const mapName=id=>mapOf(id)?.name||id;
 const mapSizeText=id=>{const map=mapOf(id);return map?`${map.sizeName} ${map.width}×${map.depth} m`:'';};
 const phaseName=phase=>phase==='play'?'Tur oynanıyor':phase==='prep'?'Saklanma süresi':phase==='end'?'Tur tamamlandı':'Oyuncular bekleniyor';
 async function refreshRooms(){
- if(!$('home')||$('home').classList.contains('hidden'))return;
- try{const response=await fetch('/api/rooms',{cache:'no-store'});if(!response.ok)throw new Error();const rooms=await response.json();
+ if(document.hidden||!$('home')||$('home').classList.contains('hidden'))return;
+ try{const response=await fetch('/api/rooms?gameId=prop-hunt',{cache:'no-store'});if(!response.ok)throw new Error();const rooms=await response.json();
   if(!rooms.length){const empty=document.createElement('small');empty.textContent='Şu an katılabileceğin açık oda yok.';$('active-rooms').replaceChildren(empty);return;}
   $('active-rooms').replaceChildren(...rooms.map(room=>{const row=document.createElement('div'),code=document.createElement('b'),detail=document.createElement('span'),join=document.createElement('button');row.className='room-row';code.textContent=room.code;detail.textContent=`${mapName(room.mapId)} · ${mapOf(room.mapId)?.sizeName||'—'} · ${room.players}/${room.capacity} · ${phaseName(room.phase)}${room.waiting?` · ${room.waiting} sırada`:''}`;join.textContent=room.phase==='play'||room.phase==='prep'?'Sıraya gir →':'Katıl →';join.onclick=()=>{$('code').value=room.code;openPlay('join');};row.append(code,detail,join);return row;}));
  }catch{const error=document.createElement('small');error.textContent='Oda listesi şu an yenilenemedi.';$('active-rooms').replaceChildren(error);}
 }
-$('rooms-refresh').onclick=refreshRooms;setInterval(refreshRooms,4000);
+$('rooms-refresh').onclick=refreshRooms;const roomPoll=setInterval(refreshRooms,10000);
 for(let i=1;i<=12;i++){const o=document.createElement('option');o.value=i;o.textContent=`${i} kişi · ${i}'e ${i}`;$('team-size').append(o);}
 // Ayar ekranı iki yerde ikiye katlanmış seçeneklerle şişmişti. Aynı şeyi anlatanlar tek dile
 // indirildi: "eşya yoğunluğu" hem süs eşyasını hem ek eşya sayısını, "hazır ayar" ise avcı-saklanan
@@ -153,11 +156,11 @@ function updateSettings(){const s=readSettings(),custom=s.botMode==='custom',han
 for(const id of ['map-rotate','density','team-size','team-selection','bot-mode','hider-bots','hunter-bots','hide-seconds','round-seconds','balance','idle-reveal','reveal-hits','escape-boost','smash-hits','water-trail'])$(id).onchange=updateSettings;
 $('create').onclick=()=>showSettings(defaults,false);$('settings-open').onclick=()=>showSettings(state?.settings||draft,!!state);
 $('save-settings').onclick=()=>{const s=readSettings();if(s.botMode==='custom'&&(s.hiderBots<0||s.hunterBots<0||s.hiderBots>s.teamSize||s.hunterBots>s.teamSize)){ $('settings-error').textContent='Bot sayısı 0 ile takım kapasitesi arasında olmalı.';return;}draft=s;if(editSettings){request('settings',s,r=>{if(r.error)$('settings-error').textContent=r.error;else $('settings-dialog').close();});}else{$('settings-dialog').close();openPlay('create');}};
-$('confirm-play').onclick=async()=>{if(!socket.connected){$('play-error').textContent='Sunucuya bağlanılması bekleniyor.';return;}const code=mode==='join'?$('code').value.replace(/\D/g,''):'';if(mode==='join'&&code.length!==4){$('play-error').textContent='4 haneli oda kodunu yaz.';return;}$('confirm-play').disabled=true;try{localStorage.setItem('mola-name',$('name').value);}catch{}
+$('confirm-play').onclick=async()=>{if(!socket.connected){$('play-error').textContent='Sunucuya bağlanılması bekleniyor.';return;}const code=mode==='join'?$('code').value.replace(/\D/g,''):'';if(mode==='join'&&code.length!==4){$('play-error').textContent='4 haneli oda kodunu yaz.';return;}$('confirm-play').disabled=true;try{saveName($('name').value);}catch{}
  request('join',{name:$('name').value,role:selectedRole,skin:selectedSkin,practice:mode==='quick',code,settings:mode==='quick'?{...defaults,mapId:quickMap,botMode:'fill'}:draft},r=>{$('confirm-play').disabled=false;if(r.error){$('play-error').textContent=r.error;return;}myId=r.id;lastRound=0;lastPhase='';teamSignature='';pickerHush='';pickerAuto=false;entered=false;closeDialogs();$('error').textContent='';});};
-function leave(){releaseMouse();socket.emit('leave');closeDialogs();unlock();state=null;myId=null;lastPhase='';world.reset();setScreen('home');}
+function leave(){releaseMouse();if(socket.connected)socket.emit('leave');closeDialogs();unlock();state=null;myId=null;lastPhase='';world.reset();setScreen('home');}
 document.querySelectorAll('.exit').forEach(b=>b.onclick=leave);
-async function copyInvite(){if(!state)return;try{await navigator.clipboard.writeText(location.origin+'/?room='+state.code);toast('Davet bağlantısı kopyalandı.');}catch{toast('Oda kodu: '+state.code);}}
+async function copyInvite(){if(!state)return;try{await navigator.clipboard.writeText(location.origin+'/games/prop-hunt/?room='+state.code);toast('Davet bağlantısı kopyalandı.');}catch{toast('Oda kodu: '+state.code);}}
 $('copy').onclick=$('invite').onclick=copyInvite;
 function startRound(){socket.timeout(6000).emit('start',(err,r)=>{if(err||r?.error){$('lobby-error').textContent=r?.error||'Tur başlatılamadı.';toast(r?.error||'Tekrar dene.');}});}
 $('start').onclick=$('again').onclick=startRound;
@@ -337,13 +340,19 @@ window.addEventListener('keyup',e=>{keys[aliases[e.key.toLowerCase()]||e.key.toL
 world.renderer.domElement.addEventListener('pointerdown',e=>{if(!active||!entered||!['alive','found'].includes(me()?.status))return;dragging=true;dragDistance=0;if(!document.pointerLockElement){grabMouse();try{world.renderer.domElement.setPointerCapture(e.pointerId);}catch{}}if(e.button===0&&me()?.role==='hunter'&&me()?.status==='alive')fire=true;});window.addEventListener('pointerup',()=>{dragging=false;fire=false;});window.addEventListener('pointercancel',()=>{dragging=false;fire=false;});window.addEventListener('mousemove',e=>{if(!active||!entered||document.querySelector('dialog[open]'))return;if(document.pointerLockElement||dragging){dragDistance+=Math.abs(e.movementX)+Math.abs(e.movementY);yaw-=e.movementX*.0022;pitch=Math.max(-1.25,Math.min(1.25,pitch-e.movementY*.0022));}});
 let touchLast=null;world.renderer.domElement.addEventListener('touchstart',e=>{if(e.touches.length===1)touchLast={x:e.touches[0].clientX,y:e.touches[0].clientY};},{passive:true});world.renderer.domElement.addEventListener('touchmove',e=>{if(!entered||!touchLast)return;const t=e.touches[0];yaw-=(t.clientX-touchLast.x)*.004;pitch=Math.max(-1.25,Math.min(1.25,pitch-(t.clientY-touchLast.y)*.004));touchLast={x:t.clientX,y:t.clientY};},{passive:true});
 for(const b of document.querySelectorAll('[data-key]')){b.onpointerdown=e=>{e.preventDefault();keys[b.dataset.key]=true;b.setPointerCapture(e.pointerId);};b.onpointerup=b.onpointercancel=()=>keys[b.dataset.key]=false;}$('touch-fire').onpointerdown=e=>{e.preventDefault();fire=true;$('touch-fire').setPointerCapture(e.pointerId);};$('touch-fire').onpointerup=$('touch-fire').onpointercancel=()=>fire=false;
-setInterval(()=>{if(!active||!socket.connected||me()?.status==='found')return;const blocked=!entered||!!document.querySelector('dialog[open]')||me()?.status!=='alive',f=blocked?0:(keys.w?1:0)-(keys.s?1:0),side=blocked?0:(keys.d?1:0)-(keys.a?1:0);
+const inputTimer=setInterval(()=>{if(document.hidden||!active||!socket.connected||me()?.status==='found')return;const blocked=!entered||!!document.querySelector('dialog[open]')||me()?.status!=='alive',f=blocked?0:(keys.w?1:0)-(keys.s?1:0),side=blocked?0:(keys.d?1:0)-(keys.a?1:0);
  // Space is the hunter's backup trigger but the hider's jump; Z/X turn a disguise on the spot.
  const hiding=me()?.role==='hider';
- socket.emit('input',{x:-Math.sin(yaw)*f+Math.cos(yaw)*side,z:-Math.cos(yaw)*f-Math.sin(yaw)*side,yaw,pitch,fire:!blocked&&!hiding&&fire,jump:!blocked&&!!keys[' '],spin:blocked?0:(keys.x?1:0)-(keys.z?1:0),lift:blocked?0:((keys.pageup?1:0)-(keys.pagedown?1:0))||(performance.now()-wheelAt<140?wheelLift:0),
+ socket.volatile.emit('input',{x:-Math.sin(yaw)*f+Math.cos(yaw)*side,z:-Math.cos(yaw)*f-Math.sin(yaw)*side,yaw,pitch,fire:!blocked&&!hiding&&fire,jump:!blocked&&!!keys[' '],spin:blocked?0:(keys.x?1:0)-(keys.z?1:0),lift:blocked?0:((keys.pageup?1:0)-(keys.pagedown?1:0))||(performance.now()-wheelAt<140?wheelLift:0),
   // C basılı tutuldukça avcı eğilir. Eğilme durumunu sunucu belirler ve pakette geri gelir:
   // istemci kendi kestirmesini çizerse görebildiği ama sunucunun göremediği bir hedefe nişan
   // alırsın. Kamera da bu yüzden own.crouch'u bekler.
   crouch:!blocked&&!hiding&&!!keys.c});},50);
-let aimAt=0;world.renderer.setAnimationLoop(t=>{world.render(state,myId,yaw,pitch,active,entered,t,{mode:spectatorMode,targetId:spectatorTarget,keys:entered&&!document.querySelector('dialog[open]')?keys:{}});if(t>aimAt&&active&&entered&&me()?.status==='alive'&&me()?.role==='hider'&&!me()?.propId&&!pickerHolds()){aimAt=t+150;const id=world.pickObject(4.5);const o=state?.objects?.find(o=>o.id===id);$('aim-label').textContent=o?`E · ${propTypes[o.type].name} ol`:'E · Yakındaki eşya listesi';}else if(!active||me()?.status==='found'||me()?.propId||me()?.role==='hunter')$('aim-label').textContent='';});
+let aimAt=0;const renderFrame=t=>{if(document.hidden||pageClosing)return;world.render(state,myId,yaw,pitch,active,entered,t,{mode:spectatorMode,targetId:spectatorTarget,keys:entered&&!document.querySelector('dialog[open]')?keys:{}});if(t>aimAt&&active&&entered&&me()?.status==='alive'&&me()?.role==='hider'&&!me()?.propId&&!pickerHolds()){aimAt=t+150;const id=world.pickObject(4.5);const o=state?.objects?.find(o=>o.id===id);$('aim-label').textContent=o?`E · ${propTypes[o.type].name} ol`:'E · Yakındaki eşya listesi';}else if(!active||me()?.status==='found'||me()?.propId||me()?.role==='hunter')$('aim-label').textContent='';};
+world.renderer.setAnimationLoop(renderFrame);
+document.addEventListener('visibilitychange',()=>{if(!pageClosing)world.renderer.setAnimationLoop(document.hidden?null:renderFrame);});
 const invite=new URLSearchParams(location.search).get('room');if(invite){$('code').value=invite.replace(/\D/g,'').slice(0,4);openPlay('join');}
+
+// A document navigation owns the game lifetime. Never retain a live game in the back/forward cache.
+window.addEventListener('pagehide',()=>{pageClosing=true;clearInterval(roomPoll);clearInterval(inputTimer);clearTimeout(toastTimer);clearTimeout(hitTimer);stopInput();audio.dispose();world.renderer.setAnimationLoop(null);socket.disconnect();world.renderer.dispose();world.renderer.forceContextLoss();});
+window.addEventListener('pageshow',event=>{if(event.persisted)location.reload();});

@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {fixtures,propTypes,generateProps,free,nearestHit,reachable,blocksDoor} from '../public/world.js';
-import {assembly,moveAssembly,settleObjects} from '../public/physics.js';
-import {player,possess,action,shoot,tick,start,view,sanitizeSettings} from '../game.js';
+import {fixtures,propTypes,generateProps,free,nearestHit,reachable,blocksDoor} from '../public/games/prop-hunt/world.js';
+import {assembly,moveAssembly,settleObjects} from '../public/games/prop-hunt/physics.js';
+import {player,possess,action,shoot,tick,start,view,sanitizeSettings} from '../server/games/prop-hunt/game.js';
 function room(){return {code:'ITEMS',host:'a',phase:'play',until:999999,settings:sanitizeSettings({teamSize:1,botMode:'off',swapTeams:false}),players:{a:player('a','Avcı',false,'hunter'),b:player('b','Saklanan',false,'hider')},objects:fixtures.map(o=>({...o})),shots:[],effects:[],results:[],events:[]};}
 const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-6,`${a} != ${b}`);
 

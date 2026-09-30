@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import {buildMapProp,buildMapArchitecture} from '../public/map-models.js';
-import {MAPS,mapTypes} from '../public/maps.js';
+import {buildMapProp,buildMapArchitecture} from '../public/games/prop-hunt/map-models.js';
+import {MAPS,mapTypes} from '../public/games/prop-hunt/maps.js';
 // Exercise the production geometry builders without a browser or WebGL context.
 function context(){
  const material=new THREE.MeshStandardMaterial(),m=new Proxy({},{get:()=>material}),pieces=[];

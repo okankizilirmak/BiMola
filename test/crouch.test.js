@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {player,start,tick,shoot,view,sanitizeSettings,HUNTER_SPEED,CROUCH_SPEED,JUMP_SPEED} from '../game.js';
-import {EYE_HEIGHT,CROUCH_EYE_HEIGHT,eyeHeight,weaponPose} from '../public/weapon.js';
-import {fixtures,free,propTypes,contains,BODY_HEIGHT} from '../public/world.js';
+import {player,start,tick,shoot,view,sanitizeSettings,HUNTER_SPEED,CROUCH_SPEED,JUMP_SPEED} from '../server/games/prop-hunt/game.js';
+import {EYE_HEIGHT,CROUCH_EYE_HEIGHT,eyeHeight,weaponPose} from '../public/games/prop-hunt/weapon.js';
+import {fixtures,free,propTypes,contains,BODY_HEIGHT} from '../public/games/prop-hunt/world.js';
 
 // Loft yemek masası: x 5.4–9.6, z 0–2, tabla .8 m, alt boşluk .7 m. Kupa tam ortasına konur ve
 // avcı masanın ön kenarından ölçülü bir mesafede durur.

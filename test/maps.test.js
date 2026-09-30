@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {MAPS,MAP_CHOICES,mapTypes,SIZE_TIERS,mapSize} from '../public/maps.js';
-import {generateProps,free,groundAt,mapFor,propTypes,pathTo,nearestHit,sight,ROOM} from '../public/world.js';
-import {player,start,tick,view,sanitizeSettings,configureRoom,defaultSettings} from '../game.js';
+import {MAPS,MAP_CHOICES,mapTypes,SIZE_TIERS,mapSize} from '../public/games/prop-hunt/maps.js';
+import {generateProps,free,groundAt,mapFor,propTypes,pathTo,nearestHit,sight,ROOM} from '../public/games/prop-hunt/world.js';
+import {player,start,tick,view,sanitizeSettings,configureRoom,defaultSettings} from '../server/games/prop-hunt/game.js';
 function make(mapId,teamSize=3){const r={host:'a',phase:'lobby',settings:sanitizeSettings({mapId,teamSize,botMode:'fill',swapTeams:false}),players:{a:player('a','Avcı',false,'hunter')}};assert.equal(start(r,1000).ok,true);return r;}
 test('all eight maps are selectable and each new map has its own valid, supported inventory',()=>{
  assert.equal(MAP_CHOICES.length,8);

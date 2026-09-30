@@ -50,7 +50,7 @@ const boundary=(h=4.8)=>[[0,-18,28,.3,h],[0,18,28,.3,h],[-14,0,.3,36,h],[14,0,.3
 const area=(id,name,xmin,xmax,zmin,zmax,types)=>({id,name,xmin,xmax,zmin,zmax,types,count:10});
 const maps={};
 function level(id,name,subtitle,color,wallList,zones,options={}){
- return maps[id]={id,name,subtitle,color,preview:`/maps/references/${id}.jpeg`,room:{width:28,depth:36,height:4.8},walls:wallList,zones,doors:[],fixtures:[],...options};
+ return maps[id]={id,name,subtitle,color,preview:`/games/prop-hunt/maps/references/${id}.jpeg`,room:{width:28,depth:36,height:4.8},walls:wallList,zones,doors:[],fixtures:[],...options};
 }
 
 // 1. Kıyı Pazarı: Akdeniz kasabası meydanı ve pazar tezgâhları
@@ -124,7 +124,7 @@ const harbor=level('harbor','Son Sevkiyat','Kargo limanı · Konteynerler, vinç
  area('freight','Gümrük hangarı',4.5,14.5,-18.5,-6.5,['cargoBox','pallet','toolChest','cableReel']),
  area('maintenance','Vinç bakım alanı',0,15,-5.5,3.5,['toolChest','cargoDrum','trafficCone','cableReel']),
  area('quay','Rıhtım',3.5,15,4.5,19,['mooringBollard','lifeBuoy','cableReel','cargoDrum'])
-],{room:{width:32,depth:40,height:8},preview:'/maps/references/harbor.svg',containers:harborContainers,layoutScale:0.4,
+],{room:{width:32,depth:40,height:8},preview:'/games/prop-hunt/maps/references/harbor.svg',containers:harborContainers,layoutScale:0.4,
  doors:[[9.5,-6,3,1]]});
 
 // 7. Sprint Ofisi: 8 Departmanlı Teknoloji Stüdyosu (30 x 36 m)
@@ -169,7 +169,7 @@ const techOffice=level('techOffice','Sprint Ofisi','8 ekip odası · Masalar, ci
   area('design','UX / UI Tasarım',-14.5,-2.8,8.3,17.5,['drawingTablet','tabletStand','kanbanBoard']),
   area('qa','QA / Test Ekibi',2.8,14.5,8.3,17.5,['testRig','phoneRack','codeMonitor'])
  ],
- {room:{width:30,depth:36,height:4.8},doors:officeDoors,preview:'/maps/references/techOffice.svg'});
+ {room:{width:30,depth:36,height:4.8},doors:officeDoors,preview:'/games/prop-hunt/maps/references/techOffice.svg'});
 
 export function terrainHeight(map,x,z){
  if(!map?.raised)return 0;
@@ -304,5 +304,5 @@ export function mapSize(room){
  const tier=SIZE_TIERS.find(t=>area<=t.maxArea);
  return {width,depth,area,size:tier.id,sizeName:tier.name,sizeTeams:tier.teams};
 }
-export const MAP_CHOICES=[{id:'loft',name:'Güneşli Ev',subtitle:'Tanıdık odalar, yüzlerce farklı kılık.',color:'#8c9c7c',preview:'/maps/references/loft.jpeg',...mapSize(LOFT_ROOM)},...Object.values(maps).map(({id,name,subtitle,color,preview,room})=>({id,name,subtitle,color,preview,...mapSize(room)}))];
+export const MAP_CHOICES=[{id:'loft',name:'Güneşli Ev',subtitle:'Tanıdık odalar, yüzlerce farklı kılık.',color:'#8c9c7c',preview:'/games/prop-hunt/maps/references/loft.jpeg',...mapSize(LOFT_ROOM)},...Object.values(maps).map(({id,name,subtitle,color,preview,room})=>({id,name,subtitle,color,preview,...mapSize(room)}))];
 export const validMap=id=>id==='loft'||Object.hasOwn(MAPS,id);

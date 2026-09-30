@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {player,start,tick,view,sanitizeSettings,configureRoom,castVote,openVote,closeVote,VOTE_SECONDS,defaultSettings} from '../game.js';
-import {MAP_CHOICES} from '../public/maps.js';
+import {player,start,tick,view,sanitizeSettings,configureRoom,castVote,openVote,closeVote,VOTE_SECONDS,defaultSettings} from '../server/games/prop-hunt/game.js';
+import {MAP_CHOICES} from '../public/games/prop-hunt/maps.js';
 
 function room(mapVote=60,names=['a','b','c']){
  const r={code:'1234',host:'a',players:{},phase:'lobby',round:0,

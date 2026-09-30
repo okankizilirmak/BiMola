@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {clampHiderCamera} from '../public/camera.js';
-import {MAPS} from '../public/maps.js';
+import {clampHiderCamera} from '../public/games/prop-hunt/camera.js';
+import {MAPS} from '../public/games/prop-hunt/maps.js';
 const loft={width:28,depth:36,height:4.8};
 test('hider camera follows players beyond the old loft limits in every corner',()=>{
  for(const {room}of [MAPS.harbor,MAPS.techOffice])for(const sx of [-1,1])for(const sz of [-1,1]){

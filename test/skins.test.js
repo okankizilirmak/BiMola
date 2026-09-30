@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SKINS,DEFAULT_SKIN,validSkin,skinFor,buildSkin} from '../public/skins.js';
-import {player,start,view,syncBots,sanitizeSettings} from '../game.js';
+import {SKINS,DEFAULT_SKIN,validSkin,skinFor,buildSkin} from '../public/games/prop-hunt/skins.js';
+import {player,start,view,syncBots,sanitizeSettings} from '../server/games/prop-hunt/game.js';
 
 // Kıyafet geometrisini üretim kurucusuyla, tarayıcı veya WebGL olmadan sınar: map-models.test.js
 // bunu three.js saplamasıyla yapıyor, burada çizilen her parçayı kaydeden düz bir bağlam yeter.

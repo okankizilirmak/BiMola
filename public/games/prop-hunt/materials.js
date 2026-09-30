@@ -12,7 +12,7 @@ export function installHiggsfieldMaterials(renderer,materials,{onLoaded}={}){
  for(const job of jobs){
   const maps=[];
   const finish=()=>{if(++done===jobs.length)onLoaded?.();};
-  const texture=loader.load('/assets/higgsfield/'+job.file,loaded=>{
+  const texture=loader.load('/games/prop-hunt/assets/higgsfield/'+job.file,loaded=>{
    // Reallocate the GPU texture when the placeholder and final image have different sizes.
    for(const map of maps){map.dispose();map.source=new THREE.Source(loaded.image);map.needsUpdate=true;}
    finish();

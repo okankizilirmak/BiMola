@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {player,start,tick,action,possess,shuffle,shoot,reload,view,sanitizeSettings,configureRoom,syncBots,setTeam,PREP_MS,ROUND_MS,SHOT_MS,RELOAD_MS,JUMP_SPEED,LIFT_MAX,HUNTER_SPEED,DEFAULT_HITS,DEFAULT_ESCAPE,DEFAULT_IDLE} from '../game.js';
-import {free,propTypes,nearestHit,generateProps,zoneAt,zones,surfaceHeight,fixtures,fitsHome,DEFAULT_DECOR} from '../public/world.js';
+import {player,start,tick,action,possess,shuffle,shoot,reload,view,sanitizeSettings,configureRoom,syncBots,setTeam,PREP_MS,ROUND_MS,SHOT_MS,RELOAD_MS,JUMP_SPEED,LIFT_MAX,HUNTER_SPEED,DEFAULT_HITS,DEFAULT_ESCAPE,DEFAULT_IDLE} from '../server/games/prop-hunt/game.js';
+import {free,propTypes,nearestHit,generateProps,zoneAt,zones,surfaceHeight,fixtures,fitsHome,DEFAULT_DECOR} from '../public/games/prop-hunt/world.js';
 function room(size=1,botMode='off'){
  const r={code:'TEST',host:'a',phase:'lobby',settings:sanitizeSettings({teamSize:size,botMode,swapTeams:false,mapRotate:false,objectCount:51,decor:1}),players:{a:player('a','Avcı',false,'hunter'),b:player('b','Saklanan',false,'hider')}};
  assert.equal(start(r,1000).ok,true);return r;

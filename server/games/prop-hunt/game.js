@@ -1,10 +1,10 @@
-import {weaponPose,toward,eyeHeight} from './public/weapon.js';
-import {validMap,MAP_CHOICES} from './public/maps.js';
-import {SKINS,DEFAULT_SKIN,skinFor} from './public/skins.js';
-import {DRIP_STEP,EFFECT_CAP,effectLife,privateTrace} from './public/effects.js';
-import {assembly,moveAssembly,detachChildren,settleObjects} from './public/physics.js';
+import {weaponPose,toward,eyeHeight} from '../../../public/games/prop-hunt/weapon.js';
+import {validMap,MAP_CHOICES} from '../../../public/games/prop-hunt/maps.js';
+import {SKINS,DEFAULT_SKIN,skinFor} from '../../../public/games/prop-hunt/skins.js';
+import {DRIP_STEP,EFFECT_CAP,effectLife,privateTrace} from '../../../public/games/prop-hunt/effects.js';
+import {assembly,moveAssembly,detachChildren,settleObjects} from '../../../public/games/prop-hunt/physics.js';
 import {randomUUID} from 'node:crypto';
-import {mapFor,groundAt,floorCoverHeight,free,sight,dist,propTypes,dimensions,objectDistance,reachable,blocksDoor,fixtures,nearestHit,pathTo,generateProps,zoneAt,zones,commonTypes,surfaceHeight,PLACEMENT_PAD,STAND_MAX_HEIGHT,BODY_HEIGHT,DEFAULT_PROP_COUNT,MIN_PROP_COUNT,MAX_PROP_COUNT,DEFAULT_DECOR,MIN_DECOR,MAX_DECOR,contains,homeKind,fitsHome} from './public/world.js';
+import {mapFor,groundAt,floorCoverHeight,free,sight,dist,propTypes,dimensions,objectDistance,reachable,blocksDoor,fixtures,nearestHit,pathTo,generateProps,zoneAt,zones,commonTypes,surfaceHeight,PLACEMENT_PAD,STAND_MAX_HEIGHT,BODY_HEIGHT,DEFAULT_PROP_COUNT,MIN_PROP_COUNT,MAX_PROP_COUNT,DEFAULT_DECOR,MIN_DECOR,MAX_DECOR,contains,homeKind,fitsHome} from '../../../public/games/prop-hunt/world.js';
 export {dist};
 // Kaç isabetin bir saklananı ortaya çıkardığı ve ıslanan saklananın kaçış hızı artık oda
 // ayarıdır; buradaki değerler yalnızca varsayılan.

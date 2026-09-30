@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Snake Showdown 3D · BiMola</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <section id="snake-lobby" class="snake-lobby">
+      <a class="bimola-home" href="/">← BiMola oyunları</a>
+      <p class="eyebrow">ARCADE · ÇOK OYUNCULU</p>
+      <h1>Snake Showdown <span>3D</span></h1>
+      <p>Yılanını büyüt, güçlendiricileri topla ve arenada rakiplerine meydan oku.</p>
+      <label>OYUNDAKİ ADIN <input id="join-name" maxlength="18" autocomplete="nickname" placeholder="Adın"></label>
+      <div class="lobby-actions"><button id="create-room" type="button">Oda kur</button></div>
+      <form id="join-room-form"><label for="join-code">Davet kodun var mı?</label><input id="join-code" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="0000"><button type="submit">Katıl</button></form>
+      <p id="join-error" role="alert"></p>
+    </section>
+    <main class="app" id="snake-game" hidden>
+      <div class="snake-room-bar"><a href="/">← BiMola</a><button id="copy-room" type="button">Oda kodunu kopyala</button><button id="leave-room" type="button">Odadan ayrıl</button></div>
+      <section class="masthead">
+        <div>
+          <p class="eyebrow">NEON ARENA · ÇOK OYUNCULU</p>
+          <h1>Snake Showdown <span>3D</span></h1>
+        </div>
+        <p class="subtitle">Hız, risk ve güçlendiricilerle dolu üç boyutlu Snake maçları.</p>
+      </section>
+
+      <section class="hud-shell">
+        <div class="hud-toggle-row">
+          <div class="hud-title-group">
+            <p class="hud-kicker">Oyun paneli</p>
+            <strong class="hud-title">Ayarlar, skorlar ve oturum bilgileri</strong>
+          </div>
+          <button id="hud-toggle" class="hud-toggle" type="button" aria-expanded="true">
+            Paneli Gizle
+          </button>
+        </div>
+
+        <div id="hud-panel" class="hud-panel">
+          <header class="hud">
+            <div class="stat">
+              <span>Puan</span>
+              <strong id="score">0</strong>
+            </div>
+            <div class="stat">
+              <span>Durum</span>
+              <strong id="status">Connecting</strong>
+            </div>
+            <div class="stat">
+              <span>Bağlantı</span>
+              <strong id="connection">Connecting</strong>
+            </div>
+            <div class="stat">
+              <span>Izgara</span>
+              <strong id="current-grid">-</strong>
+            </div>
+            <div class="stat">
+              <span>Yeniden doğma (sn)</span>
+              <strong id="current-respawn-delay">-</strong>
+            </div>
+            <div class="stat">
+              <span>Hızlanma (sn)</span>
+              <strong id="current-boost-duration">-</strong>
+            </div>
+            <div class="stat">
+              <span>Hız çarpanı</span>
+              <strong id="current-boost-multiplier">-</strong>
+            </div>
+            <div class="stat">
+              <span>Yem</span>
+              <strong id="current-food-density">-</strong>
+            </div>
+            <div class="stat">
+              <span>Oyuncu</span>
+              <strong id="current-player-limit">-/4</strong>
+            </div>
+            <div class="stat">
+              <span>Bot</span>
+              <strong id="current-bot-count">0</strong>
+            </div>
+            <div class="stat">
+              <span>Rol</span>
+              <strong id="role">Oyuncu</strong>
+            </div>
+            <button id="restart" type="button">Turu yeniden başlat</button>
+          </header>
+
+          <div class="settings-row">
+            <div class="setting-group">
+              <label for="player-name">Oyuncu adı</label>
+              <input id="player-name" maxlength="18" placeholder="Oyuncu adı" />
+              <button id="save-name" type="button">Adı kaydet</button>
+            </div>
+
+            <div class="setting-group">
+              <label for="grid-size">Izgara boyutu</label>
+              <input id="grid-size" type="number" min="16" max="128" step="1" placeholder="Izgara boyutu" />
+              <button id="apply-grid-size" type="button">Izgarayı uygula</button>
+            </div>
+
+            <div class="setting-group">
+              <label for="respawn-delay">Yeniden doğma (sn)</label>
+              <input
+                id="respawn-delay"
+                type="number"
+                min="1"
+                max="30"
+                step="1"
+                placeholder="Yeniden doğma (sn)"
+              />
+              <button id="apply-respawn-delay" type="button">Süreyi uygula</button>
+            </div>
+
+            <div class="setting-group">
+              <label for="speed-boost-duration">Hızlanma süresi (sn)</label>
+              <input
+                id="speed-boost-duration"
+                type="number"
+                min="1"
+                max="15"
+                step="1"
+                placeholder="Hızlanma (sn)"
+              />
+              <button id="apply-speed-boost-duration" type="button">Süreyi uygula</button>
+            </div>
+
+            <div class="setting-group">
+              <label for="speed-boost-multiplier">Hız çarpanı</label>
+              <input
+                id="speed-boost-multiplier"
+                type="number"
+                min="2"
+                max="5"
+                step="1"
+                placeholder="Hız çarpanı"
+              />
+              <button id="apply-speed-boost-multiplier" type="button">Çarpanı uygula</button>
+            </div>
+
+            <div class="setting-group">
+              <label for="food-density">Yem sayısı</label>
+              <input
+                id="food-density"
+                type="number"
+                min="1"
+                max="100"
+                step="1"
+                placeholder="Yem sayısı"
+                aria-label="Yem miktarı"
+              />
+              <button id="apply-food-density" type="button">Yemi uygula</button>
+            </div>
+
+            <div class="setting-group">
+              <label for="magnet-duration">Mıknatıs süresi (sn)</label>
+              <input
+                id="magnet-duration"
+                type="number"
+                min="1"
+                max="30"
+                step="1"
+                placeholder="Mıknatıs süresi"
+                aria-label="Mıknatıs Süresi"
+              />
+              <button id="apply-magnet-duration" type="button">Süreyi uygula</button>
+            </div>
+
+            <div class="setting-group">
+              <label for="magnet-radius">Mıknatıs menzili</label>
+              <input
+                id="magnet-radius"
+                type="number"
+                min="1"
+                max="10"
+                step="1"
+                placeholder="Mıknatıs menzili"
+                aria-label="Mıknatıs Yarıçapı"
+              />
+              <button id="apply-magnet-radius" type="button">Menzili uygula</button>
+            </div>
+
+            <div class="setting-group">
+              <label for="max-players">Oyuncu sınırı</label>
+              <input
+                id="max-players"
+                type="number"
+                min="2"
+                max="12"
+                step="1"
+                placeholder="Oyuncu sınırı"
+                aria-label="Maksimum online oyuncu"
+              />
+              <button id="apply-max-players" type="button">Sınırı uygula</button>
+            </div>
+
+            <div class="setting-group">
+              <label for="bot-count">Bot sayısı</label>
+              <input
+                id="bot-count"
+                type="number"
+                min="0"
+                max="11"
+                step="1"
+                placeholder="Bot sayısı"
+                aria-label="Bot Sayısı"
+              />
+              <button id="apply-bot-count" type="button">Botları uygula</button>
+            </div>
+          </div>
+
+          <section class="top-panels" aria-label="Oyun bilgileri">
+            <section class="players">
+              <h2>Oyuncular</h2>
+              <ul id="players"></ul>
+            </section>
+
+            <section class="players">
+              <h2>Yem puanları</h2>
+              <ul id="food-legend"></ul>
+            </section>
+          </section>
+        </div>
+      </section>
+
+      <section id="game-stage" class="game-stage" aria-label="Snake oyun sahnesi">
+        <div class="stage-toolbar">
+          <p><span class="stage-status-dot"></span> Kamera eksenleri WASD ile hizalı</p>
+          <div class="audio-controls">
+            <button id="audio-toggle" class="audio-btn" type="button" aria-label="Ses Efektlerini Aç/Kapat">
+              🔊 Ses: Açık
+            </button>
+            <button id="bgm-toggle" class="audio-btn" type="button" aria-label="Müzik Aç/Kapat">
+              🎵 Müzik: Açık
+            </button>
+            <label class="audio-volume-control" for="audio-volume">
+              <span class="volume-icon">🎚️</span>
+              <input id="audio-volume" type="range" min="0" max="1" step="0.05" value="0.7" title="Ses Seviyesi" />
+            </label>
+          </div>
+          <button
+            id="fullscreen-toggle"
+            class="fullscreen-toggle"
+            type="button"
+            aria-pressed="false"
+          >
+            <span aria-hidden="true">⛶</span>
+            <span id="fullscreen-label">Tam Ekran</span>
+          </button>
+        </div>
+
+        <div class="board-wrap">
+          <div class="arena-chrome" aria-hidden="true">
+            <span>SİBER IZGARA // <b>ONLINE</b></span>
+            <span class="arena-live"><i></i> CANLI SAHNE</span>
+          </div>
+          <section id="board" class="board" aria-label="3B Snake oyun alanı">
+            <div class="scene-loading">ARENA AÇILIYOR...</div>
+          </section>
+          <div class="direction-guide" aria-hidden="true">
+            <span class="direction-guide-item direction-guide-up" data-guide-dir="UP">
+              <kbd>W</kbd><b>↑</b>
+            </span>
+            <span class="direction-guide-item direction-guide-left" data-guide-dir="LEFT">
+              <kbd>A</kbd><b>←</b>
+            </span>
+            <span class="direction-guide-item direction-guide-right" data-guide-dir="RIGHT">
+              <kbd>D</kbd><b>→</b>
+            </span>
+            <span class="direction-guide-item direction-guide-down" data-guide-dir="DOWN">
+              <kbd>S</kbd><b>↓</b>
+            </span>
+          </div>
+          <aside class="minimap-shell" aria-label="Arena radarı">
+            <div class="minimap-title" aria-hidden="true">
+              <span>MİNİ HARİTA</span>
+              <small>SEN / RAKİPLER</small>
+            </div>
+            <canvas
+              id="minimap"
+              width="180"
+              height="180"
+              role="img"
+              aria-label="Arena minimapı"
+            ></canvas>
+          </aside>
+          <aside id="stage-leaderboard" class="stage-leaderboard-shell" aria-label="Tam Ekran Oyuncu Sıralaması">
+            <div class="stage-leaderboard-header">
+              <span class="stage-status-dot"></span>
+              <span>OYUNCULAR</span>
+            </div>
+            <ul id="stage-players" class="stage-players-list"></ul>
+          </aside>
+        </div>
+
+        <section class="controls" aria-label="Oyun kontrolleri">
+          <button data-dir="UP" type="button" aria-label="Yukarı, W">W ↑</button>
+          <div class="row">
+            <button data-dir="LEFT" type="button" aria-label="Sol, A">A ←</button>
+            <button data-dir="RIGHT" type="button" aria-label="Sağ, D">D →</button>
+          </div>
+          <button data-dir="DOWN" type="button" aria-label="Aşağı, S">S ↓</button>
+          <button
+            id="overview-camera"
+            class="overview-camera"
+            type="button"
+            aria-pressed="false"
+          >
+            <span>Arena Görünümü</span>
+            <small>Basılı tut</small>
+          </button>
+          <button
+            id="manual-boost"
+            class="manual-boost"
+            type="button"
+            aria-pressed="false"
+          >
+            <span>Boost</span>
+            <small>Basılı tut</small>
+          </button>
+        </section>
+
+        <p class="help stage-help">
+          W/↑ ileri, S/↓ geri, A/← sol ve D/→ sağ. Shift: boyundan harcayarak boost,
+          Space: genel görünüm.
+        </p>
+      </section>
+    </main>
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

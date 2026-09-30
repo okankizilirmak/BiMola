@@ -2,7 +2,7 @@
 // DOM veya Node bağımlılığı yoktur; içerik her zaman düz metin olarak ele alınır.
 export const SCHEMA_VERSION = 1;
 export const LIMITS = Object.freeze({
-  bytes: 64 * 1024, minQuestions: 5, maxQuestions: 80, title: 60, category: 40, language: 12,
+  bytes: 64 * 1024, minQuestions: 3, maxQuestions: 80, title: 60, category: 40, language: 12,
   text: 220, option: 90, explanation: 260, id: 40, chunkBytes: 2600, maxChunks: 40,
 });
 
@@ -71,8 +71,8 @@ export function summarizeSet(set) {
   return {title: set.title, category: set.category, language: set.language, count: set.questions.length, counts};
 }
 
-export function buildPrompt({title = 'Genel Kültür', category = 'Genel Kültür', language = 'tr', count = 30, theme = ''} = {}) {
-  const n = Math.max(LIMITS.minQuestions, Math.min(LIMITS.maxQuestions, Math.round(Number(count)) || 30));
+export function buildPrompt({title = 'Genel Kültür', category = 'Genel Kültür', language = 'tr', count = 10, theme = ''} = {}) {
+  const n = Math.max(LIMITS.minQuestions, Math.min(LIMITS.maxQuestions, Math.round(Number(count)) || 10));
   const clean = value => text(value).replace(/"/g, "'");
   const example = {
     schemaVersion: SCHEMA_VERSION, title: clean(title) || 'Genel Kültür', category: clean(category) || 'Genel Kültür', language: clean(language) || 'tr',

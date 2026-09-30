@@ -1,8 +1,12 @@
 # Ateş Köprüsü — yeni BiMola oyunu için ürün ve uygulama planı
 
-> **Durum (30 Eylül 2026):** Aşama A ve B ile Aşama C'nin set yükleme kısmı uygulandı; oyun `ates-koprusu` kimliğiyle katalogda. Kalıcı misafir kimliği ve tüm zamanlar kaydı (Aşama C'nin ikinci yarısı) henüz yok; oda puanları oda kapanınca silinir.
+> **Durum (30 Eylül 2026, 2. sürüm):** Oynanabilir; `ates-koprusu` kimliğiyle katalogda. Kalıcı misafir kimliği ve tüm zamanlar kaydı henüz yok; oda puanları oda kapanınca silinir.
 >
-> Uygulamada verilen kararlar: 12 sn seçim + 4 sn sonuç + 2 sn geçiş; herkes cevaplarsa 1,5 sn son çağrı. Yanlış veya boş cevap bir adım geri düşürür (0'ın altına inmez). Oda 1–12 kişi, oturumu kurucu başlatır. Başlangıç seti "Dünden Bugüne" (tarih + günümüz, 30 soru, 2/3/4 şıklar eşit). Oyun başlamadan yüklenen ilk set başlangıç setinin yerini alır; sonrakiler sıraya girer (en fazla 5). Set, Socket.IO'nun 4 KiB paket sınırı nedeniyle parçalar hâlinde gönderilir. Seçenek kimlikleri istemciye her soruda yeni üretilen rastgele belirteçlerle gider; AI'ın verdiği kimlikler doğru cevabı ele veremez. Son 3 saniyede katılan oyuncu o soruda boş sayılmaz.
+> **Oyun akışı (bu belgedeki "sonsuz akış" fikrinin yerini aldı):** Lobide herkes "Hazırım" der; herkes hazır olunca 3 sn geri sayım başlar. Oyuncuların yüklediği setler (3–80 soru) tek bir havuzda birleşir ve karışık oynanır; havuz boşsa "Dünden Bugüne" (30 soru) kullanılır. Havuz bitince oyun biter, podyum ve ödüller (en uzun ateş, en hızlı parmak, joker ustası, kütük mıknatısı) gösterilir, oda tekrar hazır lobisine döner. Set, oyun sürerken eklenirse sonraki oyunun havuzuna girer (en fazla 8 set / 200 soru).
+>
+> **Puan:** seri puanı (100→200) + hız bonusu (0–50, cevap hızına göre, 5'in katları). Yanlış/boş: seri 0, bir adım geri. **Altın soru:** birkaç soruda bir ve her zaman son soru; puan x2. **Jokerler** (oyun başına birer hak, soru sürerken): x2 Çifte Ateş, 50/50 (3+ şıklı sorularda, yalnız kullananın ekranında), Kalkan (yanlışta geri düşme ve seri kaybı yok), Dondur (seçilen rakibin şıkları 4 sn görünmez ve seçilemez). Joker kullanımı odadaki herkese duyurulur.
+>
+> Diğer kararlar: 12 sn seçim + 4 sn sonuç + 2 sn geçiş; herkes cevaplarsa 1,5 sn son çağrı. Oda 1–12 kişi. Set, Socket.IO'nun 4 KiB paket sınırı nedeniyle parçalar hâlinde gönderilir. Seçenek kimlikleri her soruda yeni rastgele belirteçlerle gider. Son 3 saniyede katılan oyuncu o soruda boş sayılmaz.
 
 ## 1. Oyun fikri
 

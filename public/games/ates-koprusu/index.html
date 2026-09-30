@@ -44,10 +44,10 @@
     <section class="card rules">
       <h2>Nasıl oynanır?</h2>
       <ol>
-        <li><b>12 saniye</b> içinde doğru şıkkı seç. Seçimini süre bitene kadar değiştirebilirsin.</li>
+        <li>Herkes <b>hazır</b> deyince köprü açılır. Her soru için <b>12 saniye</b> var; ne kadar hızlıysan o kadar çok hız bonusu.</li>
         <li>Kimse kimsenin seçimini göremez; şıkların yeri herkeste farklı.</li>
         <li>Art arda doğru bildikçe ateş büyür: <b>100 → 125 → 150 → 175 → 200</b> puan.</li>
-        <li>Yanlış cevap puanını silmez; seriyi sıfırlar ve seni bir adım geri atar.</li>
+        <li>Yanlış cevap seriyi sıfırlar, bir adım geri atar. Her oyunda birer <b>joker</b>: x2, 50/50, Kalkan, Dondur.</li>
       </ol>
     </section>
   </aside>
@@ -56,33 +56,57 @@
 <section id="room" class="panel-screen hidden" aria-labelledby="room-title">
   <div class="room-panel">
     <div class="room-head">
-      <div><p class="eyebrow">KÖPRÜ BAŞI</p><h2 id="room-title">Herkes köprüye toplanıyor.</h2></div>
+      <div><p class="eyebrow" id="room-eyebrow">KÖPRÜ BAŞI</p><h2 id="room-title">Herkes hazır olunca köprü açılır.</h2></div>
       <div class="invite"><small>DAVET KODU</small><button id="copy-code" class="code-chip" type="button" title="Davet bağlantısını kopyala"></button><button id="copy-link" class="ghost" type="button">Bağlantıyı kopyala</button></div>
     </div>
+    <section id="podium" class="podium hidden" aria-labelledby="podium-title">
+      <h3 id="podium-title">Köprünün sonu</h3>
+      <div id="podium-stage" class="podium-stage"></div>
+      <div id="awards" class="awards"></div>
+      <ol id="ranking" class="ranking"></ol>
+    </section>
     <div class="room-grid">
       <section><h3>Oyuncular <span id="player-count" class="count"></span></h3><div id="lobby-players" class="player-list"></div></section>
-      <section><h3>Soru seti</h3><div id="lobby-set" class="set-card"></div><div id="lobby-queue" class="queue"></div><button class="secondary open-sets" type="button">Soru seti ekle <span aria-hidden="true">＋</span></button></section>
+      <section>
+        <h3>Soru havuzu <span id="pool-count" class="count"></span></h3>
+        <div id="pool" class="queue"></div>
+        <button class="secondary open-sets" type="button">Soru seti ekle <span aria-hidden="true">＋</span></button>
+        <p class="muted small">Herkes set ekleyebilir, hazır olduktan sonra da. Havuzdaki tüm sorular karışık oynanır; havuz bitince oyun biter.</p>
+      </section>
     </div>
-    <div class="room-foot"><button class="ghost leave" type="button">← Odadan ayrıl</button><p id="lobby-note" class="muted"></p><button id="start" class="primary" type="button">Köprüyü başlat <span aria-hidden="true">→</span></button></div>
+    <div class="room-foot"><button class="ghost leave" type="button">← Odadan ayrıl</button><p id="lobby-note" class="muted" role="status"></p><button id="ready" class="primary ready-btn" type="button" aria-pressed="false">Hazırım <span aria-hidden="true">✓</span></button></div>
     <p id="room-error" class="error" role="alert"></p>
   </div>
+  <div id="countdown" class="countdown hidden" aria-live="assertive"><small>Köprü açılıyor</small><b id="countdown-num">3</b></div>
 </section>
 
-<section id="hud" class="hidden" aria-live="off">
+
+<section id="hud" class="hidden">
   <div class="hud-top">
     <div class="me-card"><small>PUANIN</small><b id="my-score">0</b><span id="my-streak" class="streak"></span></div>
-    <div class="question-card">
-      <div class="q-meta"><span id="q-round"></span><span id="q-set"></span></div>
+    <div id="question-card" class="question-card">
+      <div class="q-meta"><span id="q-round"></span><span id="q-golden" class="golden-badge hidden">ALTIN SORU · x2</span><span id="q-set"></span></div>
       <h2 id="q-text"></h2>
       <div class="timer" aria-hidden="true"><i id="timer-fill"></i></div>
       <p id="q-status" class="q-status" role="status" aria-live="polite"></p>
     </div>
     <div class="hud-buttons"><button class="glass open-sets" type="button">Set ekle ＋</button><button id="menu-open" class="glass" type="button">Menü</button></div>
   </div>
+  <div id="feed" class="feed" aria-live="polite"></div>
   <aside class="board" aria-label="Sıralama"><div class="board-head"><h3>Sıralama</h3><small>SON 10</small></div><ol id="board"></ol></aside>
   <div id="result-banner" class="result-banner" role="status"></div>
-  <div id="answers" class="answers" role="group" aria-label="Cevap seçenekleri"></div>
+  <div class="play-area">
+    <div id="jokers" class="jokers" role="group" aria-label="Jokerler">
+      <button type="button" class="joker" data-joker="double" title="Bu soruda puanın ikiye katlanır"><b>x2</b><span>Çifte Ateş</span></button>
+      <button type="button" class="joker" data-joker="half" title="Yanlış şıkların yarısı silinir (3+ şıklı sorularda)"><b>50/50</b><span>Yarı yarıya</span></button>
+      <button type="button" class="joker" data-joker="shield" title="Yanlış bilirsen geri düşmezsin, serin korunur"><b>⛨</b><span>Kalkan</span></button>
+      <button type="button" class="joker" data-joker="freeze" title="Bir rakibin şıkları 4 saniye buz tutar"><b>❄</b><span>Dondur</span></button>
+      <div id="freeze-menu" class="freeze-menu hidden" role="menu" aria-label="Kimi donduracaksın?"></div>
+    </div>
+    <div id="answers" class="answers" role="group" aria-label="Cevap seçenekleri"></div>
+  </div>
 </section>
+
 
 <dialog id="menu-dialog">
   <button class="close" type="button" data-close aria-label="Kapat">×</button>
@@ -97,15 +121,15 @@
 <dialog id="sets-dialog" class="wide">
   <button class="close" type="button" data-close aria-label="Kapat">×</button>
   <p class="eyebrow">KENDİ SORULARIN</p><h2>Soru seti ekle.</h2>
-  <p class="muted">AI promptunu kopyala, istediğin AI aracına yapıştır ve dönen JSON'u aşağıya koy. Kendin hazırladığın JSON'u da yapıştırabilirsin. Yeni set, oynanan set bitince devreye girer; oyun başlamadıysa hemen seçilir.</p>
+  <p class="muted">AI promptunu kopyala, istediğin AI aracına yapıştır ve dönen JSON'u aşağıya koy. Kendin hazırladığın JSON'u da yapıştırabilirsin. Setin odanın havuzuna girer. Herkes hazır olunca havuzdaki tüm sorular karışık oynanır; oyun sürerken eklersen sonraki oyuna kalır. 3–80 soru olabilir.</p>
   <div class="steps">
     <section>
       <h3><span>1</span> Promptu hazırla</h3>
       <div class="form-grid">
-        <label class="field"><span>BAŞLIK</span><input id="p-title" maxlength="60" value="Dünden Bugüne"></label>
+        <label class="field"><span>BAŞLIK</span><input id="p-title" maxlength="60" placeholder="Ör. Bilim Tarihi"></label>
         <label class="field"><span>KATEGORİ</span><input id="p-category" maxlength="40" value="Genel Kültür"></label>
         <label class="field"><span>DİL</span><input id="p-language" maxlength="12" value="tr"></label>
-        <label class="field"><span>SORU SAYISI</span><input id="p-count" type="number" min="5" max="80" value="30"></label>
+        <label class="field"><span>SORU SAYISI</span><input id="p-count" type="number" min="3" max="80" value="10"></label>
         <label class="field full"><span>TEMA NOTU (İSTEĞE BAĞLI)</span><input id="p-theme" maxlength="160" placeholder="Ör. 90'lar Türkiye'si, bilim tarihi, futbol…"></label>
       </div>
       <button id="copy-prompt" class="secondary" type="button">AI promptunu kopyala <span aria-hidden="true">⧉</span></button>

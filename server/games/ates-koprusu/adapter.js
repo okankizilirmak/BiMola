@@ -1,4 +1,4 @@
-import {createRoom, addPlayer, removePlayer, start, answer, tick, upload, removeQueued, view, MAX_PLAYERS} from './game.js';
+import {createRoom, addPlayer, removePlayer, setReady, answer, useJoker, tick, upload, removeSet, view, MAX_PLAYERS} from './game.js';
 
 const members = room => Object.values(room.players);
 export const adapter = {
@@ -8,18 +8,19 @@ export const adapter = {
   members,
   canJoin: room => members(room).length >= MAX_PLAYERS ? {error: `Oda dolu (${MAX_PLAYERS} kişi).`} : {ok: true},
   addPlayer(room, player) { const p = addPlayer(room, player); return {waiting: !!p.skipRound}; },
-  removePlayer,
+  removePlayer: (room, id) => removePlayer(room, id),
   summary(room) {
-    const players = members(room).length;
-    return {phase: room.phase === 'lobby' ? 'lobby' : 'play', players, capacity: MAX_PLAYERS, round: room.round, set: room.active.set.title, joinable: players < MAX_PLAYERS};
+    const players = members(room).length, waiting = ['lobby', 'countdown'].includes(room.phase);
+    return {phase: waiting ? 'lobby' : 'play', players, capacity: MAX_PLAYERS, round: room.current?.number || 0, total: room.current?.total || 0, joinable: players < MAX_PLAYERS};
   },
   view,
   tickInterval: room => room.phase === 'lobby' ? 0 : 100,
   tick: (room, now) => ({changed: tick(room, now)}),
   commands: {
-    start: {interval: 300, publish: true, handle: (room, id, _, now) => start(room, id, now)},
-    answer: {interval: 80, publish: true, handle: (room, id, data, now) => answer(room, id, data, now)},
+    ready: {interval: 150, publish: true, handle: (room, id, data, now) => setReady(room, id, data, now)},
+    answer: {interval: 60, publish: true, handle: (room, id, data, now) => answer(room, id, data, now)},
+    joker: {interval: 150, publish: true, handle: (room, id, data, now) => useJoker(room, id, data, now)},
     upload: {interval: 20, publish: true, handle: (room, id, data) => upload(room, id, data)},
-    'remove-set': {interval: 200, publish: true, handle: (room, id, data) => removeQueued(room, id, data)},
+    'remove-set': {interval: 200, publish: true, handle: (room, id, data) => removeSet(room, id, data)},
   },
 };

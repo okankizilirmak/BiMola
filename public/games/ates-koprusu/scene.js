@@ -5,6 +5,7 @@ import * as THREE from '/vendor/three.module.js';
 export const SEG = 3;           // Bir doğru cevabın köprüde kapladığı mesafe.
 const W = 7;                    // Köprü genişliği.
 const PLANK_STEP = 1, PLANKS = 72, POST_STEP = 4, POSTS = 20, ROCK_STEP = 5, ROCKS = 18;
+export const LANE_COLORS = ['#ff8a3d', '#4cc9f0', '#7ae582', '#f472b6'];
 const COLORS = ['#ff9f43', '#5ec8ff', '#ff6b9a', '#8be07a', '#c59bff', '#ffd166', '#4fd1c5', '#ff7a5c', '#9fb4ff', '#f6a6ff', '#b8e986', '#ffc3a0'];
 // Açığa çıkma zaman çizelgesi (saniye).
 const T = {lateral: .5, runStart: .6, runEnd: 1.4, logStart: .2, impact: 1.25, knockEnd: 1.95, back: 2.6, backEnd: 3.3, end: 3.6};
@@ -91,6 +92,8 @@ export function createScene(container, labelLayer, {quality = 'high', reducedMot
   const logGeo = keep(new THREE.CylinderGeometry(.55, .55, 1.6, 14)), logMat = keep(new THREE.MeshStandardMaterial({color: '#6b3b1f', roughness: .9}));
   const logCapGeo = keep(new THREE.CircleGeometry(.5, 14)), logCapMat = keep(new THREE.MeshStandardMaterial({color: '#c98a4b', roughness: .8}));
   const warnGeo = keep(new THREE.PlaneGeometry(1.4, 16)), avatars = new Map();
+  const bubbleGeo = keep(new THREE.SphereGeometry(.85, 20, 14)), bubbleMat = keep(new THREE.MeshBasicMaterial({color: '#6ff0b0', transparent: true, opacity: .22, depthWrite: false}));
+  const ICE = new THREE.Color('#7cc8f5'), FIRE = new THREE.Color('#ff5a00');
 
   function makeLog() {
     const group = new THREE.Group(), roll = new THREE.Group(), body = new THREE.Mesh(logGeo, logMat);
@@ -111,9 +114,10 @@ export function createScene(container, labelLayer, {quality = 'high', reducedMot
     const shadow = new THREE.Mesh(shadowGeo, shadowMat); shadow.rotation.x = -Math.PI / 2; shadow.position.y = .1;
     const ring = new THREE.Mesh(ringGeo, ringMat); ring.rotation.x = -Math.PI / 2; ring.position.y = .105; ring.visible = false;
     const flames = [0, 1, 2].map(i => { const s = new THREE.Sprite(new THREE.SpriteMaterial({map: flameTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true})); s.visible = false; s.position.set((i - 1) * .18, 1.1, .1); figure.add(s); return s; });
-    group.add(figure, shadow, ring); scene.add(group);
+    const bubble = new THREE.Mesh(bubbleGeo, bubbleMat); bubble.position.y = .8; bubble.visible = false;
+    group.add(figure, shadow, ring, bubble); scene.add(group);
     const el = document.createElement('div'); el.className = 'label'; labelLayer.appendChild(el);
-    return {id, group, figure, mat, ring, flames, el, x: 0, z: 0, y: 0, seed: hash(avatars.size + 1) * 10, log: makeLog(), text: ''};
+    return {id, group, figure, mat, ring, bubble, flames, el, x: 0, z: 0, y: 0, seed: hash(avatars.size + 1) * 10, log: makeLog(), text: ''};
   }
   function dropAvatar(a) {
     scene.remove(a.group, a.log.group, a.log.warn); a.mat.dispose(); a.log.warn.material.dispose();
@@ -161,9 +165,10 @@ export function createScene(container, labelLayer, {quality = 'high', reducedMot
       const count = qn.options.length, width = W / count;
       lane.strip.scale.x = width * .94;
       const chosen = qn.choice === qn.options[i].id, correct = qn.correct && qn.correct === qn.options[i].id;
-      lane.strip.material.color.set(correct ? '#3fd18f' : chosen ? (qn.correct ? '#ff5a5f' : '#ff7a2f') : '#ffffff');
-      lane.strip.material.opacity = correct ? .45 : chosen ? .42 : .1;
-      lane.label.material.opacity = chosen || correct ? 1 : .55;
+      const removed = qn.options[i].removed;
+      lane.strip.material.color.set(correct ? '#3fd18f' : chosen && qn.correct ? '#ff5a5f' : qn.golden && !chosen ? '#ffd166' : LANE_COLORS[i]);
+      lane.strip.material.opacity = removed ? .03 : correct ? .5 : chosen ? .55 : .2;
+      lane.label.material.opacity = removed ? .15 : chosen || correct ? 1 : .6;
     });
   }
 
@@ -181,6 +186,9 @@ export function createScene(container, labelLayer, {quality = 'high', reducedMot
     if (plan.correct) {
       const k = clamp01((t - T.runStart) / (T.runEnd - T.runStart));
       z = lerp(fromZ, toZ, ease(k)); y = Math.abs(Math.sin(k * Math.PI * 3)) * .35 * (k > 0 && k < 1);
+    } else if (plan.shielded) {
+      const k = clamp01((t - T.impact) / .35);
+      z = fromZ + Math.sin(k * Math.PI) * .35; // Kalkan darbeyi emer: küçük bir sarsıntı, geri düşme yok.
     } else {
       const k = clamp01((t - T.impact) / (T.knockEnd - T.impact));
       z = lerp(fromZ, toZ, ease(k)); y = Math.sin(k * Math.PI) * (reducedMotion ? .3 : 1.3);
@@ -198,6 +206,11 @@ export function createScene(container, labelLayer, {quality = 'high', reducedMot
     const lx = plan.lane >= 0 ? pos.laneTarget : a.slot, target = pos.fromZ;
     const k = (t - T.logStart) / (T.impact - T.logStart);
     const z = target - 16 + 16 * k;           // Karşıdan gelip tam oyuncuya çarpar.
+    if (plan.shielded && t > T.impact) {
+      const u = t - T.impact; // Kütük kalkandan sekip geri uçar.
+      group.position.set(lx + u * 3, .55 + u * 6 - u * u * 9, target - 1 - u * 10);
+      roll.rotation.x += u * .4; warn.visible = false; return;
+    }
     group.position.set(lx, .55 + (t > T.impact ? -(t - T.impact) * (t - T.impact) * 6 : 0), z);
     roll.rotation.x = -k * 7;
     warn.position.set(lx, .11, target - 8);
@@ -220,7 +233,12 @@ export function createScene(container, labelLayer, {quality = 'high', reducedMot
       if (a.hitAt && a.hitAt !== anim?.round) a.hitAt = 0;
       // Ateş serisi: 2'de kıvılcım, 3'ten itibaren büyüyen alev.
       const streak = p.streak || 0, level = Math.min(4, Math.max(0, streak - 1));
-      a.mat.emissiveIntensity = streak >= 2 ? .12 + level * .08 + Math.sin(time * 8 + a.seed) * .03 : 0;
+      const frozen = state?.phase === 'question' && p.frozen > Date.now() + clockOffset;
+      a.mat.emissive.copy(frozen ? ICE : FIRE);
+      a.mat.emissiveIntensity = frozen ? .55 + Math.sin(time * 5) * .1 : streak >= 2 ? .12 + level * .08 + Math.sin(time * 8 + a.seed) * .03 : 0;
+      const plan = anim?.plans[a.id], myShield = a.id === me && state?.phase === 'question' && state.question?.effects?.shield;
+      a.bubble.visible = !!(myShield || (plan?.shielded && t >= T.logStart && t < T.impact + .8));
+      if (a.bubble.visible) a.bubble.scale.setScalar(1 + Math.sin(time * 4) * .04);
       a.flames.forEach((f, i) => {
         const on = streak >= 3 && (i === 1 || (streak >= 4 && quality === 'high') || streak >= 5);
         f.visible = on;
@@ -237,8 +255,8 @@ export function createScene(container, labelLayer, {quality = 'high', reducedMot
         const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight;
         a.el.style.transform = `translate(${((tmp.x + 1) / 2 * w).toFixed(1)}px,${((1 - tmp.y) / 2 * h).toFixed(1)}px) translate(-50%,-100%)`;
         const res = qn?.results?.[a.id], showPts = anim && res && t > T.runEnd;
-        const text = `${p.name}${showPts ? (res.correct ? ` <span class="pts">+${res.points}</span>` : '') : ''}${state?.phase === 'question' && p.ready ? '<span class="ready"></span>' : ''}`;
-        if (text !== a.text) { a.text = text; a.el.innerHTML = ''; a.el.append(p.name); if (showPts && res.correct) { const s = document.createElement('span'); s.className = 'pts'; s.textContent = `+${res.points}`; a.el.append(s); } if (state?.phase === 'question' && p.ready) { const r = document.createElement('span'); r.className = 'ready'; a.el.append(r); } }
+        const text = `${p.name}${showPts ? (res.correct ? ` <span class="pts">+${res.points}</span>` : '') : ''}${state?.phase === 'question' && p.hasAnswered ? '<span class="ready"></span>' : ''}`;
+        if (text !== a.text) { a.text = text; a.el.innerHTML = ''; a.el.append(p.name); if (showPts && res.correct) { const s = document.createElement('span'); s.className = 'pts'; s.textContent = `+${res.points}`; a.el.append(s); } if (state?.phase === 'question' && p.hasAnswered) { const r = document.createElement('span'); r.className = 'ready'; a.el.append(r); } }
       }
     }
   }

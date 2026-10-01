@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {io as client} from 'socket.io-client';
 import {validatePuzzle, serializePuzzle, buildPrompt, example, normalize} from '../public/games/cengel-kapismasi/puzzle.js';
 import {starter} from '../public/games/cengel-kapismasi/starter.js';
-import {createRoom, addPlayer, removePlayer, ready, place, confirm, upload, tick, view} from '../server/games/cengel-kapismasi/game.js';
+import {createRoom, addPlayer, removePlayer, ready, configure, place, confirm, upload, tick, view} from '../server/games/cengel-kapismasi/game.js';
 import {createGameServer} from '../server.js';
 
 const puzzle = () => structuredClone(example);
@@ -211,4 +211,58 @@ test('disconnecting the unready host publishes play and schedules the remaining 
   assert.equal(room.host,a.id);
   const finished=event(a,'state',p=>p.phase==='end'); room.until=Date.now()-1;
   await finished; assert.equal(room.phase,'end');
+});
+
+test('solo rooms get a ready bot; another human replaces it and the bot never hosts', () => {
+  const r=createRoom({code:'1234',host:'a'}); addPlayer(r,{id:'a',name:'Ada'});
+  const bot=Object.values(r.players).find(p=>p.isBot);
+  assert.ok(bot?.ready); assert.equal(Object.values(r.players).length,2);
+  configure(r,'a',{duration:180}); assert.equal(bot.ready,true); assert.equal(r.players.a.ready,false);
+  addPlayer(r,{id:'b',name:'Bora'}); assert.equal(Object.values(r.players).filter(p=>p.isBot).length,0);
+  removePlayer(r,'a',1000); assert.equal(r.host,'b'); assert.ok(Object.values(r.players).find(p=>p.isBot)?.ready);
+  removePlayer(r,'b',1100); assert.equal(Object.keys(r.players).length,0); assert.equal(r.phase,'lobby');
+});
+test('each accepted solo confirmation gives the bot one bounded turn; retries and invalid moves do not', () => {
+  const r=room(1), bot=Object.values(r.players).find(p=>p.isBot), player=r.players.a;
+  assert.equal(bot.rack.length,5);
+  const request={requestId:'solo-pass',revision:r.revision,handVersion:0,placements:[]};
+  assert.ok(confirm(r,'a',{...request,revision:0},1100).error); assert.equal(bot.correct,0);
+  tick(r,1100); assert.equal(bot.correct,0);
+  const result=confirm(r,'a',request,1100);
+  assert.ok(result.bot.placed>=1 && result.bot.placed<=2); assert.equal(bot.correct,result.bot.placed);
+  assert.equal(Object.keys(r.filled).length,result.bot.placed); assert.equal(player.score,0);
+  for(const [key,value] of Object.entries(r.filled)) {assert.equal(value.by,bot.id); assert.equal(value.letter,r.puzzle.cells.find(c=>`${c.row},${c.col}`===key).letter);}
+  assert.equal(r.scoreEvents.length,0);
+  const filled=Object.keys(r.filled).length, botVersion=bot.handVersion;
+  assert.deepEqual(confirm(r,'a',request,1200),result); assert.equal(Object.keys(r.filled).length,filled); assert.equal(bot.handVersion,botVersion);
+  const next=confirm(r,'a',{...request,requestId:'solo-next',handVersion:player.handVersion},1300);
+  assert.ok(next.bot.placed>=1 && next.bot.placed<=2); assert.equal(bot.handVersion,botVersion+1);
+});
+test('the bot can finish the board and earn word points, without persistent score events', () => {
+  const r=room(1), bot=Object.values(r.players).find(p=>p.isBot), last=r.puzzle.cells.find(c=>c.letter==='C');
+  for(const cell of r.puzzle.cells) if(cell!==last) r.filled[`${cell.row},${cell.col}`]={letter:cell.letter,by:'a'};
+  for(const entry of r.puzzle.entries) if(entry.keys.every(key=>r.filled[key])) r.completed[entry.id]='a';
+  bot.rack=Array(5).fill('C');
+  const result=confirm(r,'a',{requestId:'bot-finishes',revision:r.revision,handVersion:0,placements:[]},1100);
+  assert.equal(result.bot.placed,1); assert.ok(bot.words>0); assert.ok(bot.score>0); assert.equal(r.phase,'end');
+  assert.equal(r.scoreEvents.length,1); assert.equal(r.scoreEvents[0].name,'Ada'); assert.equal(r.scoreEvents[0].completed,true);
+  assert.ok(view(r,'a',1200).players.some(p=>p.isBot && p.score===bot.score));
+  const matchId=r.matchId; ready(r,'a',true,1300);
+  assert.equal(r.phase,'play'); assert.notEqual(r.matchId,matchId); assert.equal(bot.score,0); assert.equal(bot.rack.length,5);
+});
+test('solo bot games publish turns over Socket.IO and disappear when the human leaves', async t => {
+  const server=createGameServer(); await new Promise(resolve=>server.http.listen(0,'127.0.0.1',resolve)); t.after(()=>server.close());
+  const url=`http://127.0.0.1:${server.http.address().port}`;
+  const a=client(url+'/games/cengel-kapismasi',{transports:['websocket'],reconnection:false}); t.after(()=>a.disconnect()); await event(a,'connect');
+  const lobby=event(a,'state',p=>p.phase==='lobby'),joined=await a.emitWithAck('join',{name:'Ada'});
+  const initial=await lobby; assert.equal(initial.players.length,2); assert.ok(initial.players.some(p=>p.isBot && p.ready));
+  const listed=await fetch(url+'/api/rooms?gameId=cengel-kapismasi').then(r=>r.json()); assert.equal(listed[0].players,1); assert.equal(listed[0].bots,1);
+  const playing=event(a,'state',p=>p.phase==='play'); await a.emitWithAck('ready',true); const state=await playing;
+  assert.ok(state.players.find(p=>p.isBot).rack===undefined); assert.equal(state.me.rack.length,5);
+  const updated=event(a,'state',p=>p.filled>0),result=await a.emitWithAck('confirm',{requestId:'network-bot',revision:state.revision,handVersion:0,placements:[]});
+  const packet=await updated; assert.equal(packet.filled,result.bot.placed); assert.equal(packet.players.length,2);
+  a.emit('leave');
+  for(let i=0;i<20 && server.rooms.size;i++) await new Promise(resolve=>setTimeout(resolve,10));
+  assert.equal(server.rooms.size,0);
+  a.disconnect();
 });

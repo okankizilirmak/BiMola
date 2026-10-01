@@ -86,3 +86,9 @@ Yayında `/app/data` kalıcı ve yazılabilir diske bağlanmalıdır. Compose na
 Tahtanın tamamı kullanılabilir ekran alanına otomatik sığar; oyun tahtasında yatay veya dikey kaydırma yoktur. Harf eli ve Onayla düğmesi görünür kalır. Küçük kutulardaki soruya dokununca tam ipucu tahtanın altında gösterilir.
 
 Sunucunun doğruladığı yeni tamamlanan kelimelerin harfleri sırayla parlar. Oyuncunun kendi tamamladığı kelimede kısa bir konfeti, kelime ve kazanılan kelime puanı gösterilir; aynı hamlede iki kelime için Çifte Kelime kutlaması vardır. Efekt kontrolleri engellemez ve 1,7 saniyede kaldırılır. Hareket azaltma tercihi açıksa animasyon yerine sabit bildirim kullanılır.
+
+### Tek oyuncu ve Mola Botu
+
+Tek gerçek oyuncu olan hazırlık odasına Mola Botu otomatik eklenir. Gerçek oyuncu Hazırım dediğinde botu beklemeden maç başlar. Hazırlıkta ikinci bir insan gelirse bot kaldırılır; oda tekrar tek kişiye düşerse bot geri gelir. Aktif çok oyunculu maçtan birinin ayrılması maç ortasında yeni bot eklemez.
+
+Bot, yalnızca kabul edilen insan onayından sonra kendi beş harflik elindeki harflerle 1–2 doğru boş kutu doldurur. Yanlış harf veya boş onay da botun bir sırasını tetikler; reddedilen hamle ve aynı onayın tekrar gönderilmesi tetiklemez. İnsan tahtayı bitirmişse bot oynamaz. Bot kelime ve beş konum bonusunu aynı kurallarla kazanır. Botun eli istemciye gönderilmez; yalnızca görünür harfleri ve puanı paylaşılır. Kalıcı puan olayları bot için üretilmez. Bot kendi kendine çalışan döngü veya AI çağrısı açmaz. Son insan ayrıldığında oda ve bot temizlenir.

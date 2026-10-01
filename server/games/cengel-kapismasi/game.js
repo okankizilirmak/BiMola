@@ -3,23 +3,35 @@ import {validatePuzzle} from '../../../public/games/cengel-kapismasi/puzzle.js';
 import {starter} from '../../../public/games/cengel-kapismasi/starter.js';
 
 export const MAX_PLAYERS = 12;
+const BOT_ID = 'bot:cengel';
+const humans = room => Object.values(room.players).filter(p => !p.isBot);
+function playerState(id, name, profileId, isBot = false) {
+  return {id, name, profileId, isBot, score:0, correct:0, answered:0, words:0, bonuses:0, ready:isBot, rack:[], spent:[], handVersion:0, confirmations:new Map()};
+}
+function syncSoloBot(room) {
+  const count = humans(room).length;
+  if (!count || (room.phase !== 'play' && count > 1)) delete room.players[BOT_ID];
+  else if (room.phase !== 'play' && count === 1 && !room.players[BOT_ID]) room.players[BOT_ID] = playerState(BOT_ID, 'Mola Botu', undefined, true);
+}
 export function createRoom({code, host}) {
   return {code, host, phase: 'lobby', players: {}, puzzle: validatePuzzle(starter), revision: 1, filled: {}, completed: {}, feed: [],
     until: 0, duration: 300, matchId: null, sequence: 0, scoreEvents: [], archives: [], uploads: new Map()};
 }
 export function addPlayer(room, {id, name, profileId}) {
-  room.players[id] = {id, name, profileId, score: 0, correct: 0, answered: 0, words: 0, bonuses: 0, ready: false, rack: [], spent: [], handVersion: 0, confirmations: new Map()};
+  room.players[id] = playerState(id, name, profileId);
+  syncSoloBot(room);
 }
 export function removePlayer(room, id, now = Date.now()) {
   const player = room.players[id];
   if (!player) return;
   if (room.phase === 'play' && player) room.archives.push(player);
   delete room.players[id]; room.uploads.delete(id);
-  if (room.host === id) room.host = Object.keys(room.players)[0];
+  if (room.host === id) room.host = humans(room)[0]?.id;
+  syncSoloBot(room);
   startIfReady(room, now);
 }
 function record(room, player, points, correct = 0, answered = 0, completed = false) {
-  if (!room.matchId) return;
+  if (!room.matchId || player.isBot) return;
   room.scoreEvents.push({profileId: player.profileId, name: player.name, matchId: room.matchId, round: ++room.sequence,
     points, score: player.score, streak: 0, correct, answered, completed});
 }
@@ -50,7 +62,8 @@ export function ready(room, id, value, now) {
 }
 function startIfReady(room, now) {
   const players = Object.values(room.players);
-  if (room.phase === 'play' || !players.length || !players.every(p => p.ready)) return;
+  const members = players.filter(p => !p.isBot);
+  if (room.phase === 'play' || !members.length || !members.every(p => p.ready)) return;
   room.phase = 'play'; room.revision++; room.until = now + room.duration * 1000; room.matchId = randomUUID(); room.sequence = 0;
   room.filled = {}; room.completed = {}; room.archives = []; room.feed = []; room.reason = '';
   for (const p of players) Object.assign(p, {score: 0, correct: 0, answered: 0, words: 0, bonuses: 0, ready: false, rack: [], spent: Array(5).fill(false), handVersion: 0, confirmations: new Map()});
@@ -60,7 +73,7 @@ export function configure(room, id, data) {
   if (id !== room.host) return {error: 'Süreyi oda sahibi ayarlayabilir.'};
   if (room.phase === 'play') return {error: 'Maç sürerken süre değişmez.'};
   if (![120, 180, 300, 600].includes(data?.duration)) return {error: 'Geçersiz süre.'};
-  room.duration = data.duration; Object.values(room.players).forEach(p => { p.ready = false; }); return {ok: true};
+  room.duration = data.duration; Object.values(room.players).forEach(p => { p.ready = !!p.isBot; }); return {ok: true};
 }
 export function place(room, id, data, now, deferRefill = false) {
   const player = room.players[id];
@@ -111,10 +124,31 @@ export function confirm(room, id, data, now) {
   const results = data.placements.map(tile => ({...tile, ...place(room, id, {...tile, revision: room.revision}, now, true)}));
   fillRacks(room); player.handVersion++;
   const wrong = results.filter(r => r.wrong).length, points = results.reduce((sum, r) => sum + r.points, 0);
-  const response = {ok: true, results, wrong, points, message: results.length ? `${results.length - wrong} doğru${wrong ? ` · ${wrong} yanlış` : ''} · ${points > 0 ? '+' : ''}${points} puan` : 'Boş hamle onaylandı. Harflerin korundu.'};
+  const bot = playBotTurn(room, now);
+  const response = {ok: true, results, wrong, points, bot, message: results.length ? `${results.length - wrong} doğru${wrong ? ` · ${wrong} yanlış` : ''} · ${points > 0 ? '+' : ''}${points} puan` : 'Boş hamle onaylandı. Harflerin korundu.'};
+  if (bot?.placed) response.message += ` · Bot ${bot.placed} harf yerleştirdi.`;
   player.confirmations.set(data.requestId, response);
   while (player.confirmations.size > 16) player.confirmations.delete(player.confirmations.keys().next().value);
   return response;
+}
+
+// The bot only moves in response to an accepted human confirmation, never on a timer.
+function playBotTurn(room, now) {
+  const bot = room.players[BOT_ID];
+  if (!bot || room.phase !== 'play' || now >= room.until) return null;
+  const slots = [0,1,2,3,4].sort((a,b) => Number(bot.spent[a]) - Number(bot.spent[b]));
+  const limit = randomInt(1,3);
+  let placed = 0, points = 0;
+  for (const slot of slots) {
+    if (placed >= limit || room.phase !== 'play') break;
+    const letter = bot.rack[slot], options = remaining(room).filter(c => c.letter === letter);
+    if (!options.length) continue;
+    const cell = options[randomInt(options.length)];
+    const result = place(room, bot.id, {row:cell.row,col:cell.col,slot,letter,revision:room.revision}, now, true);
+    if (result.ok) { placed++; points += result.points; }
+  }
+  if (placed) { bot.handVersion++; fillRacks(room); notice(room, `Mola Botu ${placed} harf yerleştirdi.`); }
+  return {placed, points};
 }
 
 // Chunked transfers preserve the platform's 4 KiB per-packet budget.
@@ -132,7 +166,7 @@ export function upload(room, id, data, now) {
   try { room.puzzle = validatePuzzle(transfer.text); }
   catch (error) { return {error: error.message}; }
   room.revision++; room.phase = 'lobby'; room.filled = {}; room.completed = {}; room.feed = [];
-  Object.values(room.players).forEach(p => { p.ready = false; p.rack = []; p.spent = []; });
+  Object.values(room.players).forEach(p => { p.ready = !!p.isBot; p.rack = []; p.spent = []; });
   notice(room, `${room.players[id].name} yeni bulmaca yükledi.`);
   return {ok: true, installed: true};
 }
@@ -143,7 +177,7 @@ export function view(room, id, now) {
     clueCells: room.puzzle.clueCells,
     cells: room.puzzle.cells.map(c => ({row: c.row, col: c.col, entries: c.entries, ...room.filled[`${c.row},${c.col}`], ...(room.phase === 'end' ? {solution: c.letter} : {})})),
     entries: room.puzzle.entries.map(e => ({id: e.id, clue: e.clue, row: e.row, col: e.col, startRow: e.startRow, startCol: e.startCol, direction: e.direction, length: e.answer.length, completedBy: room.completed[e.id], ...(room.phase === 'end' ? {answer: e.answer} : {})})),
-    players: Object.values(room.players).map(({id, name, score, words, bonuses, ready}) => ({id, name, score, words, bonuses, ready})),
+    players: Object.values(room.players).map(({id, name, score, words, bonuses, ready, isBot}) => ({id, name, score, words, bonuses, ready, isBot})),
     me: me ? {rack: me.rack, spent: me.spent, handVersion: me.handVersion} : null, feed: room.feed, reason: room.reason || '',
     filled: Object.keys(room.filled).length, total: room.puzzle.cells.length, completed: Object.keys(room.completed).length};
 }

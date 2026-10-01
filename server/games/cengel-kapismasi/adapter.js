@@ -1,5 +1,5 @@
 import {createRoom, addPlayer, removePlayer, ready, configure, confirm, upload, tick, view, MAX_PLAYERS} from './game.js';
-const members = room => Object.values(room.players);
+const members = room => Object.values(room.players).filter(p => !p.isBot);
 export const adapter = {
   snapshotInterval: 1000, create: ({code, host}) => createRoom({code, host}), members, addPlayer, removePlayer, view,
   canJoin(room, data = {}) {
@@ -8,7 +8,7 @@ export const adapter = {
     if (data.profileId && members(room).some(p => p.profileId === data.profileId)) return {error: 'Bu odada başka bir sekmede zaten varsın.'};
     return {ok: true};
   },
-  summary: room => ({players: members(room).length, capacity: MAX_PLAYERS, phase: room.phase, joinable: room.phase !== 'play' && members(room).length < MAX_PLAYERS}),
+  summary: room => ({players: members(room).length, capacity: MAX_PLAYERS, bots: Object.values(room.players).filter(p => p.isBot).length, phase: room.phase, joinable: room.phase !== 'play' && members(room).length < MAX_PLAYERS}),
   takeScores: room => room.scoreEvents.splice(0), tickInterval: room => room.phase === 'play' ? 250 : 0,
   tick: (room, now) => ({changed: tick(room, now)}),
   commands: {

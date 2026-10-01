@@ -34,7 +34,7 @@ export const games = [{
     id: 'cengel-kapismasi', name: 'Çengel Kapışması', tagline: 'Beş harf. Tek tahta.',
     description: 'Elindeki harfleri ortak çengel tahtasına yerleştir. Kelimeleri tamamla, beş harfi bitir ve puanları topla.',
     category: 'Kelime oyunu', minPlayers: 1, maxPlayers: 12, duration: '2–10 dk',
-    bots: false, input: 'Fare, klavye veya dokunmatik', status: 'available',
+    bots: true, input: 'Fare, klavye veya dokunmatik', status: 'available',
     entry: '/games/cengel-kapismasi/', cover: '/games/cengel-kapismasi/cover.webp',
     namespace: '/games/cengel-kapismasi', protocolVersion: 1,
   },

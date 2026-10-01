@@ -207,15 +207,15 @@ function renderPlayers() {
   const sorted = [...state.players].sort((a, b) => b.score - a.score);
   $('score-strip').replaceChildren(...sorted.map(p => {
     const chip = el('div', undefined, `score-chip${p.id === socket.id ? ' self' : ''}`);
-    chip.append(el('span', p.id === socket.id ? 'Sen' : p.name), el('strong', String(p.score))); return chip;
+    chip.append(el('span', p.id === socket.id ? 'Sen' : p.isBot ? `${p.name} · Bot` : p.name), el('strong', String(p.score))); return chip;
   }));
   $('players').replaceChildren(...sorted.map(p => {
     const li = el('li', undefined, p.id === socket.id ? 'self' : '');
-    const details = el('div', p.name + (p.id === socket.id ? ' · sen' : ''));
+    const details = el('div', p.name + (p.isBot ? ' · bot' : p.id === socket.id ? ' · sen' : ''));
     details.append(el('small', state.phase === 'play' || state.phase === 'end' ? `${p.words} kelime · ${p.bonuses} bonus` : p.ready ? '✓ Hazır' : 'Hazırlanıyor'));
     li.append(details, el('strong', String(p.score))); return li;
   }));
-  $('player-count').textContent = `${state.players.length}/12`;
+  $('player-count').textContent = `${state.players.filter(p => !p.isBot).length}/12${state.players.some(p => p.isBot) ? ' + bot' : ''}`;
 }
 function render(packet) {
   const old = state; state = packet; offset = packet.now - Date.now();
@@ -229,7 +229,7 @@ function render(packet) {
   document.body.dataset.phase = state.phase;
   $('room-code').textContent = `ODA ${state.code} · ${state.rows} × ${state.cols}`;
   $('title').textContent = state.title;
-  $('subtitle').textContent = state.phase === 'end' ? `${state.reason} ${winners()}` : state.phase === 'play' ? `${state.category} · Herkes aynı tahtada.` : `${state.category} · Hazır olduğunda işaretle. Herkes hazırsa maç başlar.`;
+  $('subtitle').textContent = state.phase === 'end' ? `${state.reason} ${winners()}` : state.phase === 'play' ? `${state.category} · Herkes aynı tahtada.` : `${state.category} · ${state.players.some(p => p.isBot) ? 'Tek başınasın; Mola Botu rakibin. Hazırım diyerek başla.' : 'Hazır olduğunda işaretle. Herkes hazırsa maç başlar.'}`;
   $('progress').textContent = `${state.filled}/${state.total} kutu · ${state.completed}/${state.entries.length} kelime`;
   const signature = `${state.code}:${state.revision}`;
   if (signature !== boardSignature) {

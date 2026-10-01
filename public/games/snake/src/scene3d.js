@@ -41,7 +41,7 @@ export function createScene3D(container) {
   renderer.toneMappingExposure = 1.15;
   renderer.shadowMap.enabled = profile.shadows;
   renderer.shadowMap.type = THREE.PCFShadowMap;
-  renderer.domElement.setAttribute("aria-label", "3B Snake oyun arenasi");
+  renderer.domElement.setAttribute("aria-label", "3B Yılan Meydanı oyun arenası");
   renderer.domElement.setAttribute("role", "img");
   container.replaceChildren(renderer.domElement);
 

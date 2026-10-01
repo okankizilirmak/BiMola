@@ -1,13 +1,13 @@
 # BiMola
 
-Arkadaşlarınla tarayıcıda buluşup çok oyunculu oyunlar oynayabileceğin bir oyun lobisi. Oyunlar: **Nesne Avı** (3D saklanma oyunu, sekiz harita ve botlar), **Ateş Köprüsü** (köprüde koşulan çok oyunculu bilgi yarışması), **Çengel Kapışması** (özel harf tepsileriyle ortak bulmaca tahtası) ve **Snake Showdown 3D** (çok oyunculu neon yılan arenası).
+Arkadaşlarınla tarayıcıda buluşup çok oyunculu oyunlar oynayabileceğin bir oyun lobisi. Oyunlar: **Nesne Avı** (3D saklanma oyunu, sekiz harita ve botlar), **Ateş Köprüsü** (köprüde koşulan çok oyunculu bilgi yarışması), **Çengel Kapışması** (özel harf tepsileriyle ortak bulmaca tahtası) ve **Yılan Meydanı** (çok oyunculu 3B yılan arenası).
 
 ```sh
 npm ci
 npm start
 ```
 
-[Lobi](http://localhost:3000) · [Nesne Avı](http://localhost:3000/games/prop-hunt/) · [Ateş Köprüsü](http://localhost:3000/games/ates-koprusu/) · [Çengel Kapışması](http://localhost:3000/games/cengel-kapismasi/) · [Snake Showdown 3D](http://localhost:3000/games/snake/)
+[Lobi](http://localhost:3000) · [Nesne Avı](http://localhost:3000/games/prop-hunt/) · [Ateş Köprüsü](http://localhost:3000/games/ates-koprusu/) · [Çengel Kapışması](http://localhost:3000/games/cengel-kapismasi/) · [Yılan Meydanı](http://localhost:3000/games/snake/)
 
 Node.js 24 (Docker ile aynı sürüm) önerilir. Geliştirme: `npm run dev`. Doğrulama: `npm test`. Ek derleme adımı yok; ES modülleri kullanılır.
 
@@ -19,7 +19,7 @@ Node.js 24 (Docker ile aynı sürüm) önerilir. Geliştirme: `npm run dev`. Do�
 - `server/games/prop-hunt/`: Nesne Avı sunucu kuralları ve platform adaptörü.
 - `public/games/prop-hunt/`: yalnızca bu oyunun ekranları, Three.js sahnesi, fizik yardımcıları ve varlıkları.
 - `server/games/ates-koprusu/` + `public/games/ates-koprusu/`: Ateş Köprüsü kuralları, başlangıç soru seti (yalnız sunucuda), soru şeması/AI promptu ve köprü sahnesi.
-- `server/games/snake/` + `public/games/snake/`: Snake oyun kuralları, oda adaptörü, 3B arena ve oyun ekranı. Oda kurabilir veya dört haneli kodla katılabilirsin; ilk oyuncu oda sahibidir. Oda üst sınırı 12 oyuncu (botlar dahil), ızgara üst sınırı 128×128 ve bot üst sınırı 11’dir.
+- `server/games/snake/` + `public/games/snake/`: Yılan Meydanı oyun kuralları, oda adaptörü, 3B arena ve oyun ekranı. Oda kurabilir veya dört haneli kodla katılabilirsin; ilk oyuncu oda sahibidir. Oda üst sınırı 12 oyuncu (botlar dahil), ızgara üst sınırı 128×128 ve bot üst sınırı 11’dir.
 - `server/games/cengel-kapismasi/` + `public/games/cengel-kapismasi/`: ortak çengel tahtası, özel beş harflik eller, AI promptu/JSON yerleşim doğrulaması ve 2D arayüz.
 
 **Yeni oyun eklemek, lobiyi veya diğer oyunları değiştirmeyi gerektirmez.** Kendi istemci klasörünü ve sunucu adaptörünü ekleyip kataloğa kaydet. Çalışan iki farklı oyunla izolasyonu gösteren örnek test `test/platform.test.js` içindedir; test oyunu kullanıcı kataloğuna eklenmez.

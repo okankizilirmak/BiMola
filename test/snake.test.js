@@ -13,6 +13,7 @@ test('Snake appears in the BiMola catalog with its own game entry', async t => {
   const catalog = await (await fetch(`${base}/api/games`)).json();
   const snake = catalog.find(game => game.id === 'snake');
   assert.ok(snake, 'Snake must be registered as an available game');
+  assert.equal(snake.name, 'Yılan Meydanı');
   assert.equal(snake.entry, '/games/snake/');
   assert.equal((await fetch(`${base}${snake.entry}`)).status, 200);
 });

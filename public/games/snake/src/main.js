@@ -815,7 +815,7 @@ function updateHudPanel() {
   hudShellEl.classList.toggle("is-collapsed", isHudCollapsed);
   hudPanelEl.hidden = false;
   hudToggleEl.setAttribute("aria-expanded", String(!isHudCollapsed));
-  hudToggleEl.textContent = isHudCollapsed ? "Paneli aç" : "Paneli Gizle";
+  hudToggleEl.textContent = isHudCollapsed ? "Ayarları aç" : "Ayarları gizle";
 }
 
 function render() {

@@ -3,43 +3,61 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Snake Showdown 3D · BiMola</title>
+    <meta name="theme-color" content="#f3f4fc" />
+    <title>Yılan Meydanı · BiMola</title>
     <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./bimola-theme.css" />
   </head>
   <body>
     <section id="snake-lobby" class="snake-lobby">
-      <a class="bimola-home" href="/">← BiMola oyunları</a>
-      <p class="eyebrow">ARCADE · ÇOK OYUNCULU</p>
-      <h1>Snake Showdown <span>3D</span></h1>
-      <p>Yılanını büyüt, güçlendiricileri topla ve arenada rakiplerine meydan oku.</p>
-      <label>OYUNDAKİ ADIN <input id="join-name" maxlength="18" autocomplete="nickname" placeholder="Adın"></label>
-      <div class="lobby-actions"><button id="create-room" type="button">Oda kur</button></div>
-      <form id="join-room-form"><label for="join-code">Davet kodun var mı?</label><input id="join-code" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="0000"><button type="submit">Katıl</button></form>
-      <p id="join-error" role="alert"></p>
+      <header class="snake-site-header">
+        <a class="snake-brand" href="/" aria-label="BiMola ana sayfa"><span class="snake-brand-mark" aria-hidden="true">Ⅱ</span>BiMola<span class="snake-brand-dot">.</span></a>
+        <a class="bimola-home" href="/">Oyun rafına dön <span aria-hidden="true">↗</span></a>
+      </header>
+      <div class="snake-lobby-grid">
+        <div class="snake-intro">
+          <p class="eyebrow">BİR OYUNLUK ARA · ARCADE</p>
+          <h1>Yılan <span>Meydanı.</span></h1>
+          <p class="snake-lede">Yılanını büyüt, güçlendiricileri topla ve arkadaşlarınla aynı arenada kapış.</p>
+          <div class="snake-facts" aria-label="Oyun bilgileri"><span>1–12 oyuncu</span><span>Botlarla da oynanır</span><span>Klavye veya dokunmatik</span></div>
+          <div class="snake-illustration" aria-hidden="true"><img src="./assets/cover.svg" width="960" height="600" alt=""></div>
+        </div>
+        <div class="snake-start-card">
+          <p class="eyebrow">ARKADAŞLARINI TOPLA</p>
+          <h2>Arenada yerini al.</h2>
+          <p>Bir oda kur, kodunu paylaş ve birlikte oynamaya başla.</p>
+          <label for="join-name">Oyundaki adın</label>
+          <input id="join-name" maxlength="18" autocomplete="nickname" placeholder="Adını yaz">
+          <button id="create-room" type="button">Oda kur <span aria-hidden="true">↗</span></button>
+          <div class="snake-divider"><span>veya</span></div>
+          <form id="join-room-form"><label for="join-code">Davet kodun var mı?</label><div class="snake-code-row"><input id="join-code" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="0000" autocomplete="off"><button type="submit">Katıl <span aria-hidden="true">↗</span></button></div></form>
+          <p id="join-error" role="alert"></p>
+        </div>
+      </div>
+      <footer class="snake-lobby-footer"><span>Kısa bir ara, ortak bir hikâye.</span><span>BiMola ile tarayıcıda buluşalım.</span></footer>
     </section>
     <main class="app" id="snake-game" hidden>
-      <div class="snake-room-bar"><a href="/">← BiMola</a><button id="copy-room" type="button">Oda kodunu kopyala</button><button id="leave-room" type="button">Odadan ayrıl</button></div>
+      <div class="snake-room-bar"><a class="snake-brand" href="/" aria-label="BiMola ana sayfa"><span class="snake-brand-mark" aria-hidden="true">Ⅱ</span>BiMola<span class="snake-brand-dot">.</span></a><span class="snake-breadcrumb">/ Yılan Meydanı</span><div class="snake-room-actions"><button id="copy-room" type="button">Oda kodunu kopyala</button><button id="leave-room" type="button">Odadan ayrıl</button></div></div>
       <section class="masthead">
         <div>
-          <p class="eyebrow">NEON ARENA · ÇOK OYUNCULU</p>
-          <h1>Snake Showdown <span>3D</span></h1>
+          <p class="eyebrow">OYUN ZAMANI · ÇOK OYUNCULU</p>
+          <h1>Yılan <span>Meydanı.</span></h1>
         </div>
-        <p class="subtitle">Hız, risk ve güçlendiricilerle dolu üç boyutlu Snake maçları.</p>
+        <p class="subtitle">Yılanını büyüt. Arenayı keşfet. En yüksek puanı topla.</p>
       </section>
 
       <section class="hud-shell">
         <div class="hud-toggle-row">
           <div class="hud-title-group">
-            <p class="hud-kicker">Oyun paneli</p>
-            <strong class="hud-title">Ayarlar, skorlar ve oturum bilgileri</strong>
+            <p class="hud-kicker">MAÇ BİLGİLERİ</p>
+            <strong class="hud-title">Puan ve oyun durumu</strong>
           </div>
           <button id="hud-toggle" class="hud-toggle" type="button" aria-expanded="true">
             Paneli Gizle
           </button>
         </div>
 
-        <div id="hud-panel" class="hud-panel">
-          <header class="hud">
+        <header class="hud">
             <div class="stat">
               <span>Puan</span>
               <strong id="score">0</strong>
@@ -85,8 +103,9 @@
               <strong id="role">Oyuncu</strong>
             </div>
             <button id="restart" type="button">Turu yeniden başlat</button>
-          </header>
+        </header>
 
+        <div id="hud-panel" class="hud-panel">
           <div class="settings-row">
             <div class="setting-group">
               <label for="player-name">Oyuncu adı</label>
@@ -224,7 +243,7 @@
         </div>
       </section>
 
-      <section id="game-stage" class="game-stage" aria-label="Snake oyun sahnesi">
+      <section id="game-stage" class="game-stage" aria-label="Yılan Meydanı oyun sahnesi">
         <div class="stage-toolbar">
           <p><span class="stage-status-dot"></span> Kamera eksenleri WASD ile hizalı</p>
           <div class="audio-controls">
@@ -252,10 +271,10 @@
 
         <div class="board-wrap">
           <div class="arena-chrome" aria-hidden="true">
-            <span>SİBER IZGARA // <b>ONLINE</b></span>
-            <span class="arena-live"><i></i> CANLI SAHNE</span>
+            <span>OYUN ALANI / <b>YILAN MEYDANI</b></span>
+            <span class="arena-live"><i></i> OYUN DEVAM EDİYOR</span>
           </div>
-          <section id="board" class="board" aria-label="3B Snake oyun alanı">
+          <section id="board" class="board" aria-label="3B Yılan Meydanı oyun alanı">
             <div class="scene-loading">ARENA AÇILIYOR...</div>
           </section>
           <div class="direction-guide" aria-hidden="true">

@@ -64,6 +64,26 @@ test('all ready starts a fixed board; private hands and solutions never leak to 
   assert.equal(packet.cells[0].letter, undefined); assert.doesNotMatch(json, /KALEM/);
   assert.ok(packet.me.rack.every(l => r.puzzle.cells.some(c => c.letter === l)));
 });
+test('leaving the last unready player starts the remaining ready players exactly once', () => {
+  const r = createRoom({code:'1234',host:'c'});
+  for (const id of ['a','b','c']) addPlayer(r, {id,name:id});
+  ready(r,'a',true,1000); ready(r,'b',true,1000);
+  assert.equal(r.phase,'lobby');
+  removePlayer(r,'c',1200);
+  assert.equal(r.phase,'play'); assert.equal(r.host,'a'); assert.equal(r.until,301200);
+  assert.equal(r.revision,2); assert.ok(Object.values(r.players).every(p => p.rack.length === 5));
+  const matchId=r.matchId; removePlayer(r,'b',1300);
+  assert.equal(r.matchId,matchId); assert.equal(r.until,301200); assert.equal(r.revision,2);
+  assert.equal(r.archives.length,1);
+});
+test('departure keeps unready rooms waiting and never starts an empty room', () => {
+  const r=createRoom({code:'1234',host:'a'});
+  for (const id of ['a','b','c']) addPlayer(r,{id,name:id});
+  ready(r,'a',true,1000); removePlayer(r,'c',1100);
+  assert.equal(r.phase,'lobby'); assert.equal(r.until,0);
+  removePlayer(r,'a',1200); removePlayer(r,'b',1300);
+  assert.equal(r.phase,'lobby'); assert.equal(r.matchId,null); assert.equal(r.revision,1);
+});
 test('wrong letters deduct one but preserve tile, empty cell, and bonus progress', () => {
   const r = room(), cell = r.puzzle.cells[0], result = put(r, 'a', cell, 0, 'Z');
   assert.equal(result.wrong, true); assert.equal(r.players.a.score, -1); assert.equal(r.players.a.rack[0], 'Z');
@@ -170,4 +190,25 @@ test('empty confirmation preserves hand/score; duplicate slots and racing cells 
   put(r,'b',cell);
   assert.ok(confirm(r,'a',{requestId:'race',revision:r.revision,handVersion:1,placements:[tile]},1200).error);
   assert.equal(p.score,0); assert.equal(p.answered,0);
+});
+
+
+test('disconnecting the unready host publishes play and schedules the remaining match', async t => {
+  const server=createGameServer();
+  await new Promise(resolve => server.http.listen(0,'127.0.0.1',resolve)); t.after(() => server.close());
+  const url=`http://127.0.0.1:${server.http.address().port}`;
+  const sockets=Array.from({length:3},()=>client(url+'/games/cengel-kapismasi',{transports:['websocket'],reconnection:false}));
+  t.after(()=>sockets.forEach(s=>s.disconnect()));
+  await Promise.all(sockets.map(s=>event(s,'connect')));
+  const [host,a,b]=sockets, joined=await host.emitWithAck('join',{name:'Host'});
+  await a.emitWithAck('join',{code:joined.code,name:'Ada'}); await b.emitWithAck('join',{code:joined.code,name:'Bora'});
+  await a.emitWithAck('ready',true); await b.emitWithAck('ready',true);
+  const room=server.rooms.get(joined.code); assert.equal(room.phase,'lobby');
+  const started=Promise.all([event(a,'state',p=>p.phase==='play'),event(b,'state',p=>p.phase==='play')]);
+  host.disconnect();
+  const packets=await started;
+  assert.ok(packets.every(p=>p.me.rack.length===5 && p.until>p.now));
+  assert.equal(room.host,a.id);
+  const finished=event(a,'state',p=>p.phase==='end'); room.until=Date.now()-1;
+  await finished; assert.equal(room.phase,'end');
 });

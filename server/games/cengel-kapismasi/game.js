@@ -10,11 +10,13 @@ export function createRoom({code, host}) {
 export function addPlayer(room, {id, name, profileId}) {
   room.players[id] = {id, name, profileId, score: 0, correct: 0, answered: 0, words: 0, bonuses: 0, ready: false, rack: [], spent: [], handVersion: 0, confirmations: new Map()};
 }
-export function removePlayer(room, id) {
+export function removePlayer(room, id, now = Date.now()) {
   const player = room.players[id];
+  if (!player) return;
   if (room.phase === 'play' && player) room.archives.push(player);
   delete room.players[id]; room.uploads.delete(id);
   if (room.host === id) room.host = Object.keys(room.players)[0];
+  startIfReady(room, now);
 }
 function record(room, player, points, correct = 0, answered = 0, completed = false) {
   if (!room.matchId) return;
@@ -43,13 +45,16 @@ export function ready(room, id, value, now) {
   const player = room.players[id];
   if (!player || room.phase === 'play') return {error: 'Maç sürerken hazırlık değişmez.'};
   player.ready = value == null ? !player.ready : value === true;
-  if (Object.values(room.players).every(p => p.ready)) {
-    room.phase = 'play'; room.revision++; room.until = now + room.duration * 1000; room.matchId = randomUUID(); room.sequence = 0;
-    room.filled = {}; room.completed = {}; room.archives = []; room.feed = []; room.reason = '';
-    for (const p of Object.values(room.players)) Object.assign(p, {score: 0, correct: 0, answered: 0, words: 0, bonuses: 0, ready: false, rack: [], spent: Array(5).fill(false), handVersion: 0, confirmations: new Map()});
-    fillRacks(room); notice(room, 'Tahta açıldı. Harflerini sürükle, sonra onayla.');
-  }
+  startIfReady(room, now);
   return {ok: true};
+}
+function startIfReady(room, now) {
+  const players = Object.values(room.players);
+  if (room.phase === 'play' || !players.length || !players.every(p => p.ready)) return;
+  room.phase = 'play'; room.revision++; room.until = now + room.duration * 1000; room.matchId = randomUUID(); room.sequence = 0;
+  room.filled = {}; room.completed = {}; room.archives = []; room.feed = []; room.reason = '';
+  for (const p of players) Object.assign(p, {score: 0, correct: 0, answered: 0, words: 0, bonuses: 0, ready: false, rack: [], spent: Array(5).fill(false), handVersion: 0, confirmations: new Map()});
+  fillRacks(room); notice(room, 'Tahta açıldı. Harflerini sürükle, sonra onayla.');
 }
 export function configure(room, id, data) {
   if (id !== room.host) return {error: 'Süreyi oda sahibi ayarlayabilir.'};

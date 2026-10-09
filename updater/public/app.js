@@ -1,0 +1,6 @@
+const $=id=>document.getElementById(id),button=$('deploy');
+async function request(path,options){const response=await fetch(path,options);const body=await response.json();if(!response.ok)throw new Error(body.error||`HTTP ${response.status}`);return body;}
+function render(s){$('target').textContent=`${s.repository} · ${s.branch} → ${s.target}`;$('stage').textContent=s.stage;$('commit').textContent=s.lastSuccess?.commit?.slice(0,12)||'—';$('image').textContent=s.lastSuccess?.image||'—';$('result').textContent=s.lastError?.message||(s.lastSuccess?'Başarılı':'Henüz dağıtım yok');$('result').className=s.lastError?'bad':s.lastSuccess?'good':'';$('logs').textContent=s.logs.length?s.logs.map(x=>`${new Date(x.at).toLocaleTimeString('tr-TR')}  ${x.message}`).join('\n'):'Henüz kayıt yok.';button.disabled=s.running;button.textContent=s.running?'Güncelleniyor…':'Güncellemeyi başlat';}
+async function refresh(){try{render(await request('/api/status'));}catch(error){$('stage').textContent=error.message;button.disabled=true;}}
+button.onclick=async()=>{if(!confirm('GitHub main sürümü test edilip bimola konteynerine dağıtılsın mı?'))return;button.disabled=true;try{await request('/api/deploy',{method:'POST'});await refresh();}catch(error){alert(error.message);await refresh();}};
+refresh();setInterval(refresh,2000);

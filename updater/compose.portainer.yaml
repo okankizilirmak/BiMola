@@ -1,0 +1,23 @@
+services:
+  bimola-updater:
+    image: bimola-updater:1.0.5
+    container_name: bimola-updater
+    ports:
+      - "3100:8080"
+    environment:
+      PORTAINER_URL: "${PORTAINER_URL:?Set the Portainer HTTPS URL}"
+      PORTAINER_TLS_VERIFY: "false"
+      PORTAINER_API_KEY: "CHANGE_ME_IN_PORTAINER"
+      UPDATER_PASSWORD: "CHANGE_ME_MINIMUM_16_CHARACTERS"
+      TARGET_CONTAINER: "bimola"
+      GITHUB_REPOSITORY: "vyslbysl/BiMola"
+      GITHUB_BRANCH: "main"
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL

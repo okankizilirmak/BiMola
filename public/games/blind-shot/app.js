@@ -7,6 +7,7 @@ import {MAPS, getMap} from './maps.js';
 import {createAudio} from './audio.js';
 import {createFullscreen} from './fullscreen.js';
 import {describeShots} from './results.js';
+import {replayFrame, REPLAY_MS} from './replay.js';
 import {moveArena} from './arena.js';
 const $ = id => document.getElementById(id), canvas = $('arena');
 let arenaScene, resultsKey = '', lastResults = [], replayStart=0, countdownKey='';
@@ -15,7 +16,7 @@ $('map-select').replaceChildren(...MAPS.map(map=>new Option(map.name,map.id)));
 $('sound').onclick=async()=>{const enabled=await audio.toggle();$('sound').textContent=enabled?'♫ Ses: açık':'♫ Ses: kapalı';$('sound').setAttribute('aria-pressed',String(enabled));};
 document.addEventListener('pointerdown',()=>audio.unlock());
 $('replay').onclick=()=>{releaseMouse();replayStart=replayActive()?-1:performance.now();};
-function replayActive(){return state&&['reveal','round-end','end'].includes(state.phase)&&replayStart>0&&performance.now()>=replayStart&&(performance.now()-replayStart)<4400;}
+function replayActive(){return state&&['reveal','round-end','end'].includes(state.phase)&&replayStart>0&&performance.now()>=replayStart&&(performance.now()-replayStart)<REPLAY_MS;}
 
 const socket = io('/games/blind-shot', {autoConnect: false, reconnection: false});
 let finalDismissed=false, finalKey='', joinSelectedTeam=null;
@@ -353,9 +354,11 @@ function draw(time = performance.now()) {
       const right = Number(keys.has('d') || keys.has('arrowright')) - Number(keys.has('a') || keys.has('arrowleft'));
       if (forward || right) draft = walkDraft(draft, state.arena, forward, right, seconds);
     }
-    const replay=replayActive();
-    arenaScene?.draw(state, draft, {follow: mode === 'walk' && state.phase === 'plan',...(replay?{replayAge:(performance.now()-replayStart)/1000*.25}:{})});
-    $('replay-label').hidden=!replay;$('replay').textContent=replay?'↺ Tekrarı atla':'↺ Ağır çekim';
+    const replay=replayActive()?replayFrame(state,performance.now()-replayStart):null;
+    arenaScene?.draw(state, draft, {follow: mode === 'walk' && state.phase === 'plan', replay});
+    $('replay-label').hidden=!replay;
+    if(replay)$('replay-label').textContent=`AĞIR ÇEKİM · 0,25× · ${replay.caption}`;
+    $('replay').textContent=replay?'↺ Tekrarı atla':'↺ Ağır çekim';
     const left=Math.max(0,Math.ceil((state.until-Date.now()-offset)/1000));
     const beat=`${state.matchRound}:${state.round}:${left}`;
     if(state.phase==='plan'&&left>0&&left<=3&&beat!==countdownKey){countdownKey=beat;audio.play('countdown');}

@@ -1,4 +1,4 @@
-export const DEFAULT_RULES=Object.freeze({mode:'solo',teamCount:2,teamSize:2,planSeconds:12,shrink:.1,maxSteps:12,cover:'normal',abilities:true,survival:1,hit:3,roundWin:5});
+export const DEFAULT_RULES=Object.freeze({mode:'solo',teamCount:2,teamSize:2,planSeconds:12,shrink:.1,maxSteps:12,cover:'none',abilities:true,survival:1,hit:3,roundWin:5});
 export function validRules(r){
   return r&&Object.keys(r).every(k=>Object.hasOwn(DEFAULT_RULES,k))&&['solo','teams'].includes(r.mode)&&[2,3,4].includes(r.teamCount)&&Number.isInteger(r.teamSize)&&r.teamSize>=1&&r.teamSize<=4&&r.teamCount*r.teamSize<=8&&[8,12,20].includes(r.planSeconds)&&[.05,.1,.15].includes(r.shrink)&&[8,12,16].includes(r.maxSteps)&&['normal','sparse','none'].includes(r.cover)&&typeof r.abilities==='boolean'&&[['survival',1,5],['hit',1,10],['roundWin',0,10]].every(([k,min,max])=>Number.isInteger(r[k])&&r[k]>=min&&r[k]<=max);
 }

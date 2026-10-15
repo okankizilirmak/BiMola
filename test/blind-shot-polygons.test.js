@@ -32,8 +32,8 @@ test('walking cannot escape sloped polygon faces, even during diagonal movement'
   }
 });
 test('every continuing shot shrinks every map, relocates safely, hides positions and resets next match',()=>{
-  for(const map of MAPS){
-    const r=createRoom('1234','a');r.mapId=map.id;r.roundCount=1;
+  for(const map of MAPS)for(const cover of ['none','normal']){
+    const r=createRoom('1234','a');r.mapId=map.id;r.roundCount=1;r.rules.cover=cover;
     adapter.addPlayer(r,{id:'a',name:'Ada'});adapter.addPlayer(r,{id:'b',name:'Bora'});start(r,0);
     for(let step=1;step<=12;step++){
       r.players.a.angle=0;r.players.b.angle=Math.PI;
@@ -46,6 +46,6 @@ test('every continuing shot shrinks every map, relocates safely, hides positions
         const packet=view(r,'a',r.until-1);assert.equal(packet.players.find(p=>p.id==='b').x,undefined);assert.deepEqual(packet.shots,[]);
       }
     }
-    assert.equal(r.phase,'end');start(r,1000000);assert.equal(r.arena.scale,1);assert.equal(r.arena.obstacles.length,mapArena(map.id).obstacles.length);
+    assert.equal(r.phase,'end');start(r,1000000);assert.equal(r.arena.scale,1);assert.equal(r.arena.obstacles.length,cover==='none'?0:mapArena(map.id).obstacles.length);
   }
 });

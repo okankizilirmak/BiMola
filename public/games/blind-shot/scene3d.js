@@ -38,6 +38,7 @@ export function createScene3D(canvas) {
     dead: new THREE.MeshStandardMaterial({color:0xa16d60,roughness:.7}),
     dark: new THREE.MeshStandardMaterial({color:0x16272e,roughness:.4,metalness:.5}),
     visor: new THREE.MeshStandardMaterial({color:0x7bd4ee,emissive:0x38768b,emissiveIntensity:.8,roughness:.2,metalness:.6}),
+    crown: new THREE.MeshStandardMaterial({color:0xffd65a,emissive:0xffb82e,emissiveIntensity:.65,roughness:.3,metalness:.65}),
     shot: new THREE.MeshBasicMaterial({color:0xe7ffc1,transparent:true,opacity:.9}),
     hit: new THREE.MeshBasicMaterial({color:0xff9276,transparent:true,opacity:.95}),
   };
@@ -171,7 +172,7 @@ export function createScene3D(canvas) {
   const shotMaterials=shotColors.map(color=>new THREE.MeshBasicMaterial({color,transparent:true,opacity:.9}));
   shotMaterials.forEach((mat,index)=>materials[`trail${index}`]=mat);
   const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let lastShotKey='', shotStarted=0, effects=[], disposed=false;
+  let lastShotKey='', shotStarted=0, effects=[], disposed=false, replayView='';
   const temporaryMaterials=new Set(), temporaryTextures=new Set();
   function clearShots(){
     shotGroup.clear();effects=[];
@@ -193,6 +194,8 @@ export function createScene3D(canvas) {
   // BiMola character colours, cached in `materials` so dispose() releases them.
   const characterMaterial=hex=>materials['character:'+hex]||=new THREE.MeshStandardMaterial({color:hex,roughness:.45,metalness:.25});
   const avatarKey=player=>`${player.character}:${player.team??''}`;
+  const crownBandGeometry=geometry(new THREE.TorusGeometry(12,2.2,8,24));
+  const crownTipGeometry=geometry(new THREE.ConeGeometry(3.5,10,4));
   function avatar(player,self){
     const group=new THREE.Group(),actor=new THREE.Group();group.add(actor);scene.add(group);const shield=mesh(shieldGeometry,shieldMaterial,group,0,30,0);shield.visible=false;
     // The team colour stays dominant in team mode; the character then shows on the helmet and accessory.
@@ -210,12 +213,21 @@ export function createScene3D(canvas) {
     mesh(bootGeometry,materials.trim,legs[0],0,-5,2);mesh(bootGeometry,materials.trim,legs[1],0,-5,2);
     mesh(armGeometry,color,actor,-13,29,6);mesh(armGeometry,color,actor,13,29,6);
     mesh(gunGeometry,materials.dark,actor,13,29,20);mesh(visorGeometry,materials.visor,actor,0,47,9.5);
+    let crown=null;
+    if(self){
+      crown=new THREE.Group();crown.position.y=64;actor.add(crown);
+      const band=mesh(crownBandGeometry,materials.crown,crown);band.rotation.x=-Math.PI/2;
+      for(let i=0;i<6;i++){
+        const angle=i*Math.PI/3;
+        mesh(crownTipGeometry,materials.crown,crown,Math.cos(angle)*12,5,Math.sin(angle)*12);
+      }
+    }
     const ring=mesh(markerRingGeometry,teamRings[player.team]||(self?materials.neon:materials.trim),group,0,2);ring.rotation.x=-Math.PI/2;ring.castShadow=false;
     const labelCanvas=document.createElement('canvas');labelCanvas.width=256;labelCanvas.height=64;
     const context=labelCanvas.getContext('2d');context.fillStyle='#102024dd';context.fillRect(0,0,256,64);context.fillStyle=TEAMS[player.team]?teamColor(player.team):self?'#c7f579':'#dfebe4';context.font='bold 25px system-ui';context.textAlign='center';context.textBaseline='middle';context.fillText(player.name,128,32,242);
     const texture=new THREE.CanvasTexture(labelCanvas);textures.add(texture);
-    const label=new THREE.Sprite(new THREE.SpriteMaterial({map:texture,transparent:true,depthWrite:false}));label.position.set(0,75,0);label.scale.set(75,19,1);group.add(label);
-    return {group,actor,shield,label,ring,legs,accessory,key:avatarKey(player),previous:null};
+    const label=new THREE.Sprite(new THREE.SpriteMaterial({map:texture,transparent:true,depthWrite:false}));label.position.set(0,self?95:75,0);label.scale.set(75,19,1);group.add(label);
+    return {group,actor,shield,label,ring,legs,accessory,crown,key:avatarKey(player),previous:null};
   }
   function dropAvatar(a){scene.remove(a.group);a.label.material.map.dispose();textures.delete(a.label.material.map);a.label.material.dispose();a.accessory?.traverse(node=>node.geometry?.dispose());}
   function resize(){
@@ -258,8 +270,9 @@ export function createScene3D(canvas) {
         effects.push(effect);
       }
     }
-    const age=options.replayAge??(performance.now()-shotStarted)/1000;
-    const newlyHit=new Set((state?.shots||[]).map(s=>s.target).filter(Boolean));
+    const replay=options.replay;
+    const age=replay?.age??(performance.now()-shotStarted)/1000;
+    const newlyHit=new Set((replay?[replay.shot]:state?.shots||[]).map(s=>s.target).filter(Boolean));
     const visible=new Set();
     for(const p of state?.players||[]){
       if(!Number.isFinite(p.x)||state.phase==='lobby'||(planning&&(!p.alive||(p.id!==state.me&&(state.rules.mode!=='teams'||!me?.alive||p.team!==me.team)))))continue;
@@ -273,7 +286,8 @@ export function createScene3D(canvas) {
       const eased=1-Math.pow(1-fall,3);
       a.actor.rotation.z=eased*Math.PI/2;a.actor.position.y=eased*9;a.ring.visible=p.alive;
       a.shield.visible=p.alive&&((planning&&p.id===state.me?draft?.ability:p.ability)==='shield');
-      a.label.position.y=p.alive?75:40;
+      if(a.crown)a.crown.position.y=64+(reducedMotion||!p.alive?0:Math.sin(performance.now()*.002)*1.5);
+      a.label.position.y=p.alive?(a.crown?95:75):40;
       a.label.visible = !(p.id === state.me && options.follow);
     }
     for(const [id,a] of avatars)if(!visible.has(id)){dropAvatar(a);avatars.delete(id);}
@@ -289,6 +303,9 @@ export function createScene3D(canvas) {
     }
     for(const effect of effects){
       const {shot,dx,dz,len,beam,muzzle,label}=effect;
+      const active=!replay||shot.id===replay.shot.id;
+      beam.visible=active;
+      if(!active){muzzle.visible=label.visible=false;if(effect.burst){effect.burst.visible=effect.hitLabel.visible=false;for(const {spark} of effect.sparks)spark.visible=false;}continue;}
       const travel=reducedMotion?1:Math.min(1,age/.3),length=len*travel;
       beam.position.set(shot.x+dx*travel/2,29,shot.y+dz*travel/2);beam.scale.set(2.3,length,2.3);
       const muzzleSize=Math.max(0,1-age/.25)*1.1;
@@ -306,12 +323,25 @@ export function createScene3D(canvas) {
         }
       }
     }
-    if (options.replayAge!==undefined && effects.length) {
-      const focus=effects.find(e=>e.shot.target===state.me)||effects.find(e=>e.shot.target)||effects[0];
-      const {shot,dx,dz,len}=focus,middleX=shot.x+dx*.5,middleZ=shot.y+dz*.5;
-      const distance=Math.max(300,Math.min(1500,len*1.25+100));
-      cameraGoal.set(middleX-Math.sin(Math.atan2(dz,dx))*distance*.8,Math.max(220,distance*.8),middleZ+Math.cos(Math.atan2(dz,dx))*distance*.8);
-      camera.position.lerp(cameraGoal,reducedMotion?1:.1);camera.lookAt(middleX,25,middleZ);followReady=false;
+    if (replay) {
+      const shot=replay.shot,dx=shot.endX-shot.x,dz=shot.endY-shot.y;
+      const len=Math.hypot(dx,dz),ux=len?dx/len:Math.cos(shot.angle||0),uz=len?dz/len:Math.sin(shot.angle||0);
+      const travel=reducedMotion?1:Math.min(1,age/.3);
+      const x=shot.x+dx*travel,z=shot.y+dz*travel;
+      if(replay.stage==='impact'){
+        cameraGoal.set(shot.endX-ux*125-uz*100,100,shot.endY-uz*125+ux*100);
+        cameraTarget.set(shot.endX,30,shot.endY);
+      }else{
+        cameraGoal.set(x-ux*120-uz*55,80,z-uz*120+ux*55);
+        cameraTarget.set(x+ux*45,29,z+uz*45);
+      }
+      // Keep the cinematic camera above cover and inside the full map envelope.
+      const bounds=clampArena(cameraGoal.x,cameraGoal.z,mapArena(state.mapId));
+      cameraGoal.x=bounds.x;cameraGoal.z=bounds.y;
+      for(const o of state.arena.obstacles||[])if(boxEntry(cameraGoal.x,cameraGoal.z,cameraTarget.x-cameraGoal.x,cameraTarget.z-cameraGoal.z,o,12)<=1)cameraGoal.y=Math.max(cameraGoal.y,o.height+80);
+      const view=`${shotKey}:${replay.stage}:${shot.id}`;
+      if(view!==replayView||reducedMotion)camera.position.copy(cameraGoal);else camera.position.lerp(cameraGoal,.18);
+      replayView=view;camera.lookAt(cameraTarget);followReady=false;
     } else if (options.follow && me?.alive && draft) {
       const distance = 110, height = 35 + Math.sin(pitch) * 105;
       cameraGoal.set(draft.x - Math.cos(draft.angle) * distance - Math.sin(draft.angle) * 35, height, draft.y - Math.sin(draft.angle) * distance + Math.cos(draft.angle) * 35);
@@ -328,6 +358,7 @@ export function createScene3D(canvas) {
     } else {
       followReady = false; cameraGoal.set(0,1040,1150);camera.position.lerp(cameraGoal,.12);camera.lookAt(0,0,0);
     }
+    if(!replay)replayView='';
     renderer.render(scene,camera);
   }
   function dispose(){

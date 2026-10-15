@@ -17,7 +17,7 @@ export function arenaFor(room,scale=1){
 }
 const alive = room => Object.values(room.players).filter(p => p.alive);
 export function createRoom(code, host) {
-  return {rules:{...DEFAULT_RULES},history:[],mapQueue:[],selectedMapId:null,covers:[],winnerTeams:[],code, host, players: {}, phase: 'lobby', arena: mapArena('foundry'), mapId: 'foundry', roundCount: 3, matchRound: 0, roundWinners: [], roundScored: false, round: 0, until: 0, shots: [], winners: [], botPlans: [], lastReveal: []};
+  return {rules:{...DEFAULT_RULES},history:[],mapQueue:[],selectedMapId:null,covers:[],winnerTeams:[],code, host, players: {}, phase: 'lobby', arena: arenaFor({mapId:'foundry',rules:DEFAULT_RULES}), mapId: 'foundry', roundCount: 3, matchRound: 0, roundWinners: [], roundScored: false, round: 0, until: 0, shots: [], winners: [], botPlans: [], lastReveal: []};
 }
 export function finish(room, now = Date.now()) {
   if (room.roundScored) return;
